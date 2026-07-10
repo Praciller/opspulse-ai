@@ -1,0 +1,31 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime output
+*.log
+logs/
+tmp/
+
+# Local platform state
+.netlify/
+
+# Operating systems
+.DS_Store
+Thumbs.db
