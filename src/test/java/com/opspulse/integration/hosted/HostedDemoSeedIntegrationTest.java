@@ -3,7 +3,9 @@ package com.opspulse.integration.hosted;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.opspulse.ai.application.port.in.BriefUseCase;
 import com.opspulse.demo.HostedDemoSeedRunner;
+import com.opspulse.risk.application.port.in.RiskUseCase;
 import com.opspulse.identity.application.port.out.PasswordHasher;
 import com.opspulse.integration.support.PostgresIntegrationTestSupport;
 import java.util.UUID;
@@ -41,6 +43,12 @@ class HostedDemoSeedIntegrationTest extends PostgresIntegrationTestSupport {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private RiskUseCase risks;
+
+    @Autowired
+    private BriefUseCase briefs;
+
     @DynamicPropertySource
     static void hostedDemoProperties(DynamicPropertyRegistry registry) {
         registry.add("HOSTED_DEMO_VIEWER_EMAIL", () -> VIEWER_EMAIL);
@@ -64,6 +72,14 @@ class HostedDemoSeedIntegrationTest extends PostgresIntegrationTestSupport {
         assertThat(jdbcTemplate.queryForObject(
                         "SELECT count(*) FROM inventory_movements", Integer.class))
                 .isEqualTo(20);
+        assertThat(jdbcTemplate.queryForObject(
+                        """
+                        SELECT count(*) FROM risk_events r
+                        JOIN products p ON p.id = r.entity_id
+                        WHERE p.sku LIKE 'OPS-%' AND r.status = 'OPEN'
+                        """, Integer.class))
+                .isGreaterThan(0);
+        assertHostedBrief();
     }
 
     @Test
@@ -97,6 +113,7 @@ class HostedDemoSeedIntegrationTest extends PostgresIntegrationTestSupport {
                         "SELECT count(*) FROM products WHERE sku LIKE 'OPS-%'",
                         Integer.class))
                 .isEqualTo(10);
+        assertHostedBrief();
     }
 
     @Test
@@ -118,7 +135,20 @@ class HostedDemoSeedIntegrationTest extends PostgresIntegrationTestSupport {
     }
 
     private HostedDemoSeedRunner runnerWith(MockEnvironment environment) {
-        return new HostedDemoSeedRunner(passwordHasher, jdbcTemplate, environment);
+        return new HostedDemoSeedRunner(passwordHasher, jdbcTemplate, environment, risks, briefs);
+    }
+
+    private void assertHostedBrief() {
+        var row = jdbcTemplate.queryForMap(
+                """
+                SELECT r.generated_by, r.created_by_type, count(*) OVER () AS hosted_count
+                FROM ai_recommendations r
+                JOIN ai_usage_audit u ON u.recommendation_id = r.id
+                WHERE u.request_id = 'hosted-demo-bootstrap'
+                """);
+        assertThat(((Number) row.get("hosted_count")).intValue()).isEqualTo(1);
+        assertThat((String) row.get("generated_by")).isEqualTo("RULE_BASED");
+        assertThat((String) row.get("created_by_type")).isEqualTo("SYSTEM");
     }
 
     private void assertViewerRow() {

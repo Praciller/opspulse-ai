@@ -1,6 +1,8 @@
 package com.opspulse.demo;
 
+import com.opspulse.ai.application.port.in.BriefUseCase;
 import com.opspulse.identity.application.port.out.PasswordHasher;
+import com.opspulse.risk.application.port.in.RiskUseCase;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -43,12 +45,17 @@ public class HostedDemoSeedRunner implements ApplicationRunner {
     private final PasswordHasher passwordHasher;
     private final JdbcTemplate jdbcTemplate;
     private final Environment environment;
+    private final RiskUseCase risks;
+    private final BriefUseCase briefs;
 
     public HostedDemoSeedRunner(
-            PasswordHasher passwordHasher, JdbcTemplate jdbcTemplate, Environment environment) {
+            PasswordHasher passwordHasher, JdbcTemplate jdbcTemplate, Environment environment,
+            RiskUseCase risks, BriefUseCase briefs) {
         this.passwordHasher = passwordHasher;
         this.jdbcTemplate = jdbcTemplate;
         this.environment = environment;
+        this.risks = risks;
+        this.briefs = briefs;
     }
 
     @Override
@@ -58,6 +65,7 @@ public class HostedDemoSeedRunner implements ApplicationRunner {
                 requiredProperty("HOSTED_DEMO_VIEWER_EMAIL"),
                 requiredProperty("HOSTED_DEMO_VIEWER_PASSWORD"));
         seedBusinessData();
+        bootstrapRiskAndBrief();
     }
 
     private void upsertViewerUser(String email, String password) {
@@ -95,6 +103,18 @@ public class HostedDemoSeedRunner implements ApplicationRunner {
                 "INSERT INTO user_roles (user_id, role_id) VALUES (?, "
                         + "(SELECT id FROM roles WHERE name = 'VIEWER')) ON CONFLICT DO NOTHING",
                 VIEWER_USER_ID);
+    }
+
+    private void bootstrapRiskAndBrief() {
+        // Re-evaluate deterministic rules on every demo boot. The active-risk dedup
+        // index makes this idempotent while keeping a cold-started demo current.
+        risks.scan();
+        Integer briefCount = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM ai_usage_audit WHERE request_id = 'hosted-demo-bootstrap'",
+                Integer.class);
+        if (briefCount != null && briefCount == 0) {
+            briefs.generate(5, null, null, "hosted-demo-bootstrap", "system");
+        }
     }
 
     private void seedBusinessData() {
