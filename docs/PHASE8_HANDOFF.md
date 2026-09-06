@@ -1,6 +1,12 @@
 # Phase 8 Portfolio Handoff
 
-Phase 7 local hardening is complete. Phase 8 is ready for the external hosted
+> Status update 2026-09-06: the repository is public
+> (https://github.com/Praciller/opspulse-ai), all phases are committed with green
+> CI, and the hosted-demo profile ships a least-privilege VIEWER seeding path
+> (`HostedDemoSeedRunner`). The remaining external step is provisioning and
+> verifying the hosted slim stack; no provider credentials are stored in Git.
+
+Phase 7 hardening is complete. Phase 8 is ready for the external hosted
 verification step; no provider credentials, hosted URLs, screenshots, commits,
 or pushes are stored in this repository.
 

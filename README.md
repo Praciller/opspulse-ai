@@ -2,7 +2,7 @@
 
 > **Java/Spring Boot operations intelligence platform for SMEs** — detect stockout, overstock, order delay, and supplier reliability risks, then generate an AI-assisted daily action plan that reduces manual Excel triage.
 
-[![Phase](https://img.shields.io/badge/phase-6%20import%20%2B%20reports-brightgreen)](docs/ROADMAP.md) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
+[![CI](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
 
 ---
 
@@ -44,15 +44,9 @@ This project is also a **portfolio artifact** demonstrating end-to-end engineeri
 
 ## Implementation status
 
-- **Phase 0 — repository scaffolding:** implemented locally.
-- **Phase 1 — backend foundation:** implemented and verified locally.
-- **Phase 2 — core CRUD and transactional inventory:** implemented and verified locally.
-- **Phase 3 — deterministic risk engine and outbox processing:** implemented locally; verification is listed below.
-- **Phase 4 — AI recommendations:** implemented locally; BYOK Spring AI generation, deterministic fallback, prompt/version audit, lifecycle API, and outbox publication are verified below.
-- **Phase 5 — frontend operations console:** implemented locally in [`frontend/`](frontend/); mock, real-API-gated, and accessibility smoke coverage are included.
-- **Phase 6 — imports and reports:** implemented locally; V11 persistence, bounded asynchronous CSV jobs, idempotency/file-hash deduplication, row errors, five report endpoints, frontend wiring, and Testcontainers/API coverage are included.
-- **Phase 7 — hosted hardening:** local CI, coverage, security checks, optional observability stack, slim-image verification, and gated smoke tooling are implemented; hosted provisioning remains external.
-- **Phase 8 — portfolio completion:** documentation and handoff guidance are prepared; hosted URLs, screenshots, publication, commit, and push remain external.
+- **Phases 0–6 — foundation through imports/reports:** implemented and verified (145 backend tests with Testcontainers, architecture tests, frontend lint/unit/build, Playwright + axe coverage). Source is public on GitHub with CI enforcing build, tests, Docker image size, npm audit, and dependency review.
+- **Phase 7 — hosted hardening:** CI, JaCoCo coverage, security checks, optional full-stack observability profile, jlink slim image (108 MB, gated at 250 MB in CI), and smoke tooling are implemented and verified.
+- **Phase 8 — portfolio completion:** documentation and handoff are published; the hosted slim demo (Render + Neon + Cloudflare Pages) is the remaining external step, tracked in [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md).
 
 Phase 2 adds bounded product, supplier, customer-order, purchase-order, and
 inventory-movement APIs. Stock is changed only through immutable movement rows.
@@ -172,7 +166,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and pl
 Prerequisites: Docker Desktop and Git. Java 21 is required only when running Gradle directly on the host.
 
 ```bash
-git clone https://github.com/<you>/opspulse-ai.git
+git clone https://github.com/Praciller/opspulse-ai.git
 cd opspulse-ai
 # Copy .env.example to .env and set JWT_SECRET to a random 32+ character value.
 docker compose up --build -d
