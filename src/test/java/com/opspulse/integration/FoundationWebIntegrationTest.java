@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.opspulse.integration.support.PostgresIntegrationTestSupport;
 import com.opspulse.shared.observability.RequestIdContext;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -31,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(FoundationWebIntegrationTest.TestController.class)
-class FoundationWebIntegrationTest {
+class FoundationWebIntegrationTest extends PostgresIntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
@@ -84,6 +85,14 @@ class FoundationWebIntegrationTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.requestId").value("security-request"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void exposesPrometheusMetricsToAdministrators() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("jvm_")));
     }
 
     @RestController
