@@ -31,7 +31,7 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.flywaydb:flyway-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17")
-    implementation("net.logstash.logback:logstash-logback-encoder:8.1")
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0")
 
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
