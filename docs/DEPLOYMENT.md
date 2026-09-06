@@ -45,7 +45,7 @@ flowchart LR
 
 | Var | Value | Notes |
 |---|---|---|
-| `VITE_API_BASE_URL` | `https://<render-service>.onrender.com/api` | backend base |
+| `VITE_API_BASE_URL` | `https://<render-service>.onrender.com` | backend origin (the frontend appends `/api` paths itself); verified deployed value: `https://opspulse-ai.onrender.com` |
 | `VITE_DEMO_MODE` | `true` | shows demo banner |
 
 ### 3.3 Deploy steps
