@@ -7,7 +7,7 @@
 
 ## Context
 
-The outbox pattern ([ADR-002](ADR-002-use-postgresql-outbox-in-hosted-demo.md)) writes domain events to a PostgreSQL `outbox_events` table and dispatches them via a Spring Scheduler poller. In the hosted slim profile, the dispatcher invokes in-process consumers. In the local full stack profile, the dispatcher additionally publishes the same events to Kafka/Redpanda.
+The outbox pattern ([ADR-002](ADR-002-use-postgresql-outbox-in-hosted-demo.md)) writes domain events to a PostgreSQL `outbox_events` table and dispatches them via a Spring Scheduler poller. In the hosted slim and current local profiles, the dispatcher invokes durable in-process consumers. The optional local full stack provides Redpanda for future transport integration; Kafka publication remains deferred.
 
 We want the **domain event contract to remain identical** whether the consumer is in-process, Kafka, Redpanda, or a future cloud event bus — so we never have to rewrite consumers when we change transport.
 

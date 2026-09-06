@@ -9,7 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -85,6 +87,14 @@ public class GlobalExceptionHandler {
                         "is required")));
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
+        return respond(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                ErrorCode.IMPORT_FILE_TOO_LARGE,
+                "CSV file exceeds the 10 MiB limit");
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiErrorResponse> handleUnreadableMessage(
             HttpMessageNotReadableException exception) {
@@ -117,6 +127,14 @@ public class GlobalExceptionHandler {
                 exception.status(),
                 exception.errorCode(),
                 exception.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException exception) {
+        return respond(
+                HttpStatus.FORBIDDEN,
+                ErrorCode.FORBIDDEN,
+                "Access is denied");
     }
 
     @ExceptionHandler(Exception.class)

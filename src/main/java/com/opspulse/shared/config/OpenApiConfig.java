@@ -26,6 +26,9 @@ public class OpenApiConfig {
                         new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
-                                .bearerFormat("JWT")));
+                                .bearerFormat("JWT")
+                                .description(
+                                        "HS256 access token returned by POST /api/auth/login "
+                                                + "or POST /api/auth/refresh")));
     }
 }

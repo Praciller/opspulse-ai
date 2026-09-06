@@ -1,24 +1,28 @@
 # ADR-004 — Slim Free-Tier Deployment
 
 - **Status:** Accepted
-- **Date:** 2026-07-10
-- **Review date:** 2026-09-10 (free-tier status drifts; re-verify quarterly)
+- **Date:** 2026-07-13
+- **Review date:** 2026-10-13 (free-tier status drifts; re-verify quarterly)
 - **Decision owner:** Portfolio project
 
 ## Context
 
 The hosted demo must be deployable on **long-term free services only** (NFR-9). No short-lived free trials. No required paid service. The hosted stack must be lightweight enough to fit within constrained free-tier CPU/RAM (NFR-1).
 
-This ADR selects the hosted-slim deployment topology and records the **verified free-tier status** of each platform as of 2026-07-10. Per the project rule, any platform whose free-tier status cannot be confirmed must be marked **"requires manual verification"** — none of the four chosen platforms fall into that bucket at this time, but the free-tier landscape is unstable and the review cadence below is mandatory.
+This ADR selects the hosted-slim deployment topology and records a **historical free-tier baseline** for each platform as of 2026-07-13. Hosted provisioning has not been performed in this phase, so every provider limit and free-tier claim must be re-verified immediately before deployment; the review cadence below is mandatory.
 
 ## Decision
 
+The deployment topology below is a historical baseline only. Hosted
+provisioning has not been performed, so all provider limits and free-tier
+availability require manual verification immediately before deployment.
+
 Adopt the following hosted-slim topology:
 
-| Layer | Service | Verified free-tier status (2026-07-10) |
+| Layer | Service | Historical baseline (2026-07-13; re-verify before deployment) |
 |---|---|---|
 | Frontend | **Cloudflare Pages** | Permanent free plan; unlimited sites/bandwidth/static requests; 500 builds/month; 20,000 files/site; 25 MiB max file; 100 custom domains/project. Source: [developers.cloudflare.com/pages/platform/limits](https://developers.cloudflare.com/pages/platform/limits/) |
-| Backend | **Render Free Web Service** (Docker) | Permanent free plan; 750 instance-hours/workspace/month; spins down after 15 min idle; cold start 30–90s; 5 GB outbound bandwidth/month; 500 build minutes/month; single instance; no persistent disk; no WebSockets; no private networking. Source: [render.com/docs/free](https://render.com/docs/free) |
+| Backend | **Render Free Web Service** (Docker) | Permanent free plan; 750 instance-hours/workspace/month; spins down after 15 min idle; cold start about 1 minute; 5 GB outbound bandwidth/month; 500 build minutes/month; single instance; no persistent disk, inbound private networking, or shell access. WebSockets are supported. Source: [render.com/docs/free](https://render.com/docs/free) |
 | Database | **Neon Free Postgres** | Permanent free plan ($0/mo, not a trial); 100 projects; 100 CU-hours/project/month (doubled Oct 2025); 0.5 GB storage/project; 5 GB egress/project/month; scale-to-zero after 5 min idle (mandatory); autoscale up to 2 CU (~8 GB RAM); 104 max connections. Source: [neon.com/faqs/free-plan-limits-and-quotas](https://neon.com/faqs/free-plan-limits-and-quotas) |
 | Optional cache | **Upstash Redis Free** | Permanent free plan; 500,000 commands/month (changed from 10K/day in Mar 2025); 256 MB data; 10 GB bandwidth/month; single region. Source: [upstash.com/pricing/redis](https://upstash.com/pricing/redis) |
 
@@ -46,18 +50,18 @@ flowchart LR
 
 **Positive**
 - $0/month recurring cost for hosted demo.
-- All four are permanent (non-trial) free tiers as of 2026-07-10.
+- All four are permanent (non-trial) free tiers as of 2026-07-13.
 - Cloudflare Pages has unlimited bandwidth — frontend cost is effectively uncapped.
 - Neon scales to zero — idle portfolio demo accrues near-zero compute hours.
 - Render Docker support lets us ship a slim multi-stage JRE image.
 
 **Negative**
-- **Render cold starts**: 30–90s after 15 min idle. Mitigation: external keep-alive ping (cron-job.org / GitHub Actions / UptimeRobot) every 10–14 min hitting `/actuator/health`. Trade-off: keep-alive consumes the 750h/month budget — a single service pinged every 10 min uses ~43 hours/month, well under 750h. (See R-02.)
-- **Render 750h cap**: a single service can run 24/7 within 750h if kept warm (24*31=744h ≤ 750). Multiple always-on services would exceed the cap. Single-service hosted demo is safe.
+- **Render cold starts**: about 1 minute after 15 min idle. The free demo accepts this and shows a clear waking-up state; no keep-alive job is required. (See R-02.)
+- **Render 750h cap**: one continuously running service can consume 744 hours in a 31-day month, leaving only 6 shared workspace hours. Allowing idle spin-down preserves quota and avoids unnecessary automation.
 - **Neon 0.5GB storage**: demo dataset is ~30 products, 60 orders, 20 POs, ~200 movements — comfortably < 100MB. Risk if audit_logs/outbox_events grow unbounded → mitigate with cleanup jobs ([DATA_MODEL.md §12](../DATA_MODEL.md)).
 - **Neon 100 CU-hours**: scale-to-zero means idle demo uses ~0 CU; active bursts autoscale to 2 CU. 100 CU-hours covers ~400 hours at 0.25 CU — ample for a low-traffic demo.
 - **Neon 5 min idle wake latency**: first query after idle pays ~hundreds of ms wake; mitigated by frontend retry + small loading state.
-- **No WebSockets on Render free**: SSE for live dashboard deferred (Phase 7 spike); outbox polling is sufficient for MVP.
+- **No live push in the MVP**: Render supports WebSockets, but outbox polling is sufficient and survives free-instance restarts with less stateful connection handling. SSE/WebSockets remain optional future work.
 - **No persistent disk on Render free**: state lives in Neon only; no local file storage. CSV uploads handled in-memory/streaming and persisted as `import_jobs` rows in Postgres.
 
 **Neutral**

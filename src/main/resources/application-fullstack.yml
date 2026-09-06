@@ -1,0 +1,3 @@
+opspulse:
+  observability:
+    prometheus-public: true

@@ -31,6 +31,29 @@ class LayerDependencyTest {
                     .allowEmptyShould(true);
 
     @ArchTest
+    static final ArchRule domain_remains_free_of_framework_types =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..domain..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "org.springframework..",
+                            "jakarta.persistence..",
+                            "com.fasterxml.jackson..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule infrastructure_does_not_depend_on_driving_adapters =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..infrastructure..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("com.opspulse..api..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
     static final ArchRule shared_code_does_not_depend_on_features =
             noClasses()
                     .that()

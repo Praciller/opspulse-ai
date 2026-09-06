@@ -1,7 +1,8 @@
 # Gradle
 .gradle/
 build/
-out/
+bin/
+/out/
 
 # IDEs
 .idea/
