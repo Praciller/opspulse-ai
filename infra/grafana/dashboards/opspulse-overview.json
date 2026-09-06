@@ -1,0 +1,18 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {"type":"timeseries","title":"JVM heap used","gridPos":{"h":8,"w":12,"x":0,"y":0},"targets":[{"expr":"jvm_memory_used_bytes{area=\"heap\"}","legendFormat":"{{id}}"}]},
+    {"type":"timeseries","title":"Risk scans","gridPos":{"h":8,"w":12,"x":12,"y":0},"targets":[{"expr":"increase(opspulse_risk_scan_evaluated_total[15m])","legendFormat":"evaluated"},{"expr":"increase(opspulse_risk_scan_created_total[15m])","legendFormat":"created"},{"expr":"increase(opspulse_risk_scan_resolved_total[15m])","legendFormat":"resolved"}]},
+    {"type":"timeseries","title":"Outbox delivery","gridPos":{"h":8,"w":12,"x":0,"y":8},"targets":[{"expr":"increase(opspulse_outbox_processed_total[15m])","legendFormat":"processed"},{"expr":"increase(opspulse_outbox_retry_total[15m])","legendFormat":"retried"},{"expr":"increase(opspulse_outbox_dead_total[15m])","legendFormat":"dead"},{"expr":"opspulse_outbox_delivery_lag_seconds_max","legendFormat":"lag seconds"}]},
+    {"type":"timeseries","title":"AI and import throughput","gridPos":{"h":8,"w":12,"x":12,"y":8},"targets":[{"expr":"increase(opspulse_ai_generation_count_total[15m])","legendFormat":"AI generation"},{"expr":"opspulse_ai_generation_duration_seconds_max","legendFormat":"AI latency seconds"},{"expr":"increase(opspulse_import_completed_total[15m])","legendFormat":"imports"},{"expr":"increase(opspulse_report_requests_total[15m])","legendFormat":"reports"}]}
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["opspulse", "phase-7"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "OpsPulse overview",
+  "version": 1
+}
