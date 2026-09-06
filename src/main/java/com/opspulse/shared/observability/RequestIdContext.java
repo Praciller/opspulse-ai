@@ -15,4 +15,8 @@ public final class RequestIdContext {
         var requestId = MDC.get(MDC_KEY);
         return requestId == null || requestId.isBlank() ? "unknown" : requestId;
     }
+
+    public static String currentUserId() {
+        return MDC.get(USER_ID_MDC_KEY);
+    }
 }

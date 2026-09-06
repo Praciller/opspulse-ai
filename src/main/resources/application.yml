@@ -4,10 +4,56 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   profiles:
     default: local
+    group:
+      fullstack: local
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  ai:
+    openai:
+      api-key: ${AI_API_KEY:}
+      base-url: ${AI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${AI_MODEL:gpt-4o-mini}
+    retry:
+      max-attempts: 1
+      on-client-errors: false
+
+opspulse:
+  observability:
+    prometheus-public: false
+  ai:
+    model: ${AI_MODEL:gpt-4o-mini}
+    base-url: ${AI_BASE_URL:https://api.openai.com}
+    max-top-n: 20
+    timeout-seconds: 15
+  inventory:
+    allow-negative-stock: ${ALLOW_NEGATIVE_STOCK:false}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:}
+      access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:900}
+      refresh-token-ttl-seconds: ${JWT_REFRESH_TOKEN_TTL_SECONDS:604800}
+    bcrypt-strength: ${BCRYPT_STRENGTH:12}
+    registration-mode: ${REGISTRATION_MODE:ADMIN_ONLY}
+    refresh-token-retention-days: ${REFRESH_TOKEN_RETENTION_DAYS:7}
+    refresh-token-cleanup-cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 0 3 * * *}
 
 springdoc:
   api-docs:
@@ -20,10 +66,14 @@ server:
   shutdown: graceful
 
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
