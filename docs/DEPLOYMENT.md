@@ -1,7 +1,7 @@
 # OpsPulse-AI — Deployment Guide
 
-> Status: Draft v0.1
-> Last updated: 2026-07-13
+> Status: Draft v0.2
+> Last updated: 2026-09-06 (free-tier limits re-verified against official provider pages)
 > Companion: [ADR-004](ADR/ADR-004-slim-free-tier-deployment.md), [ARCHITECTURE.md](ARCHITECTURE.md), [RISK_REGISTER.md](RISK_REGISTER.md)
 
 ## 1. Deployment Philosophy
@@ -45,7 +45,7 @@ flowchart LR
 
 | Var | Value | Notes |
 |---|---|---|
-| `VITE_API_BASE_URL` | `https://<render-service>.onrender.com/api` | backend base |
+| `VITE_API_BASE_URL` | `https://<render-service>.onrender.com` | backend origin (the frontend appends `/api` paths itself); verified deployed value: `https://opspulse-ai.onrender.com` |
 | `VITE_DEMO_MODE` | `true` | shows demo banner |
 
 ### 3.3 Deploy steps
@@ -71,6 +71,7 @@ flowchart LR
 | Type | Web Service |
 | Environment | Docker |
 | Region | closest to Neon region (e.g., `oregon` ↔ Neon AWS us-east-2; verify latency) |
+| Spring profile | `prod,hosted-demo` (hosted demo only) |
 | Instance type | Free |
 | Health Check Path | `/actuator/health` |
 | Health Check Grace Period | 60s (cold start tolerance) |
@@ -98,6 +99,8 @@ flowchart LR
 | `UPSTASH_REDIS_URL` | no | – | optional; absent → Caffeine in-memory cache |
 | `CORS_ALLOWED_ORIGINS` | yes | `https://<project>.pages.dev` | allowlist |
 | `ALLOW_NEGATIVE_STOCK` | no | `false` | admin config |
+| `HOSTED_DEMO_VIEWER_EMAIL` | with `hosted-demo` profile | – | email for the single least-privilege demo account |
+| `HOSTED_DEMO_VIEWER_PASSWORD` | with `hosted-demo` profile | – | injected secret; rotates the demo VIEWER password on each boot |
 | `OUTBOX_POLL_INTERVAL_MS` | no | `5000` | |
 | `app_config.riskScanCron` | no | `0 0 7 * * *` | Persisted typed scheduler setting; 7am daily |
 | `BRIEF_CRON` | no | `0 5 7 * * *` | 7:05am daily |
@@ -153,10 +156,20 @@ To run migrations manually against Neon before deploy, use the Flyway CLI with
 the direct (non-pooled) connection string, or rely on the application's startup
 migration step.
 
-### 5.5 Demo data seeding
+### 5.5 Hosted demo data and access (hosted-demo profile)
 
-- `prod` profile does NOT seed demo data (`R__seed_demo_data.sql` gated by `local`/`test` profiles).
-- For hosted demo, run a one-off `./gradlew seedDemo -Dprofile=prod` task (Phase 7) that inserts the demo dataset described in [DATA_MODEL.md §10.3](DATA_MODEL.md).
+- `prod` does NOT seed demo data (`R__seed_demo_data.sql` is gated to `local`/`test`).
+- The hosted demo activates the additional Spring profile `hosted-demo`
+  (`SPRING_PROFILES_ACTIVE=prod,hosted-demo`). `HostedDemoSeedRunner` then:
+  1. creates or rotates exactly one least-privilege VIEWER account from the
+     `HOSTED_DEMO_VIEWER_EMAIL` and `HOSTED_DEMO_VIEWER_PASSWORD` environment
+     variables (never the repository's documented local demo password, never an
+     ADMIN/MANAGER/OPERATOR account, values never logged);
+  2. seeds a synthetic, credential-free business dataset (10 products, 4 suppliers,
+     12 orders, 8 purchase orders, 20 inventory movements) on first boot so the
+     deterministic risk engine has genuine stockout, overstock, slow-moving,
+     order-delay, and supplier-reliability signals to detect.
+- `REGISTRATION_MODE` stays `ADMIN_ONLY` on the hosted deployment.
 
 ## 6. Optional Cache — Upstash Redis Free
 
@@ -185,34 +198,26 @@ See §4.2 (backend), §3.2 (frontend), §5.2 (database). Secrets (`JWT_SECRET`, 
 
 ## 8. Docker Build
 
-### 8.1 Dockerfile (multi-stage, slim)
+### 8.1 Dockerfile (multi-stage, jlink slim runtime)
 
-```dockerfile
-# Build stage
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /workspace
-COPY . .
-RUN ./gradlew bootJar -x test
-
-# Runtime stage
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /workspace/build/libs/*.jar /app/app.jar
-EXPOSE 8080
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -XX:MaxDirectMemorySize=32m"
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
-```
+The repository `Dockerfile` builds with the Gradle JDK image, derives the JDK
+modules the application actually needs with `jdeps`, and links a minimal runtime
+with `jlink` (plus `java.desktop` for Spring bean editing and the TLS crypto
+modules that static analysis cannot see). The runtime stage is plain
+`alpine:3.20` with the custom runtime — no stock JRE. CI asserts the resulting
+image stays below 250 MB; the verified size is ~108 MB.
 
 ### 8.2 Build locally
 
 ```bash
-docker build -t opspulse-ai/backend:latest backend/
+docker build -t opspulse-ai/backend:latest .
 docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e NEON_DATABASE_URL=... opspulse-ai/backend:latest
 ```
 
 ### 8.3 Image size target
 
-- Runtime image < 250 MB (JRE 21 + slim jar).
+- Runtime image < 250 MB, enforced by the CI `docker` job; verified 108 MB with
+  the jlink runtime (the stock JRE base measured 273 MB and failed the gate).
 
 ## 9. Health Check & Readiness
 
@@ -227,10 +232,10 @@ docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e NEON_DATABASE_URL=... 
 
 | Platform | Free plan URL | Last verified | Hard limits (verified) | Status |
 |---|---|---|---|---|
-| Cloudflare Pages | https://developers.cloudflare.com/pages/platform/limits/ | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
-| Render Free Web Service | https://render.com/docs/free | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
-| Neon Free Postgres | https://neon.com/pricing | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
-| Upstash Redis Free | https://upstash.com/pricing/redis | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification (optional) |
+| Cloudflare Pages | https://developers.cloudflare.com/pages/platform/limits/ | 2026-09-06 | 500 builds/month, 1 concurrent build, 20,000 files/site, 25 MiB max file, 100 custom domains/project | OK for this project |
+| Render Free Web Service | https://render.com/docs/free | 2026-09-06 | 750 free instance-hours/workspace/month; spin-down after 15 min idle, ~1 min spin-up; shared workspace bandwidth + build-minutes pools; no disk/SSH | OK for this project |
+| Neon Free Postgres | https://neon.com/pricing | 2026-09-06 | ~0.5 GB storage/project; ~100–190 CU-hours/month depending on accounting; scale-to-zero after ~5 min idle; 6-hour point-in-time restore | OK for this project |
+| Upstash Redis Free | https://upstash.com/pricing/redis | 2026-09-06 | Not used by the hosted demo (Caffeine in-process cache is sufficient); re-verify before enabling | Optional — not required |
 
 If any row becomes "requires manual verification", follow [ADR-004 alternatives](ADR/ADR-004-slim-free-tier-deployment.md) and update this table.
 
