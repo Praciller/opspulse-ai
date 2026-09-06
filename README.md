@@ -2,9 +2,21 @@
 
 > **Java/Spring Boot operations intelligence platform for SMEs** — detect stockout, overstock, order delay, and supplier reliability risks, then generate an AI-assisted daily action plan that reduces manual Excel triage.
 
-[![Build](https://img.shields.io/badge/build-planned-lightgrey)](#) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
+[![Phase](https://img.shields.io/badge/phase-6%20import%20%2B%20reports-brightgreen)](docs/ROADMAP.md) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
 
 ---
+
+## Phase 5/6 operations console
+
+The local `frontend/` application is implemented with React, TypeScript,
+Vite, and Tailwind. Real backend APIs are the default; deterministic fixtures
+are opt-in with `VITE_USE_MOCKS=true`. It includes protected role-aware routes,
+inventory and purchasing views, risk lifecycle actions, AI brief generation and
+feedback, import upload/status/error workflows, five JSON reports, Cloudflare
+Pages SPA routing, unit/component tests, Playwright mock flow, and axe
+accessibility coverage.
+See [`frontend/README.md`](frontend/README.md) for setup and the optional
+real-API smoke variables.
 
 ## Why this project exists
 
@@ -30,18 +42,39 @@ This project is also a **portfolio artifact** demonstrating end-to-end engineeri
 | Replace manual triage | A daily AI brief with executive summary + top 5 risks + recommended actions + message drafts. |
 | Demonstrable engineering | Modular monolith, hexagonal architecture, PostgreSQL outbox + CloudEvents, BYOK AI with rule-based fallback, free-tier hosted demo. |
 
-## Key features
+## Implementation status
+
+- **Phase 0 — repository scaffolding:** implemented locally.
+- **Phase 1 — backend foundation:** implemented and verified locally.
+- **Phase 2 — core CRUD and transactional inventory:** implemented and verified locally.
+- **Phase 3 — deterministic risk engine and outbox processing:** implemented locally; verification is listed below.
+- **Phase 4 — AI recommendations:** implemented locally; BYOK Spring AI generation, deterministic fallback, prompt/version audit, lifecycle API, and outbox publication are verified below.
+- **Phase 5 — frontend operations console:** implemented locally in [`frontend/`](frontend/); mock, real-API-gated, and accessibility smoke coverage are included.
+- **Phase 6 — imports and reports:** implemented locally; V11 persistence, bounded asynchronous CSV jobs, idempotency/file-hash deduplication, row errors, five report endpoints, frontend wiring, and Testcontainers/API coverage are included.
+- **Phase 7 — hosted hardening:** local CI, coverage, security checks, optional observability stack, slim-image verification, and gated smoke tooling are implemented; hosted provisioning remains external.
+- **Phase 8 — portfolio completion:** documentation and handoff guidance are prepared; hosted URLs, screenshots, publication, commit, and push remain external.
+
+Phase 2 adds bounded product, supplier, customer-order, purchase-order, and
+inventory-movement APIs. Stock is changed only through immutable movement rows.
+Each mutation locks the product row, computes the balance under PostgreSQL
+`REPEATABLE READ`, and commits the product, movement, audit row, and pending
+CloudEvents-compatible outbox row atomically. Serialization failures are retried
+up to three times for standalone inventory requests. Negative stock is disabled
+by default and may be enabled only through `ALLOW_NEGATIVE_STOCK=true` until a
+later administration UI exists.
+
+## MVP features
 
 - **Auth & RBAC** — JWT, refresh rotation, 4 roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`).
 - **Products, Suppliers, Orders, Purchase Orders, Inventory Movements** — full CRUD with audit log.
 - **Transactional inventory** — stock updates, immutable movements, audit, and outbox event in one transaction.
-- **Deterministic risk engine** — 6 risk types (`STOCKOUT_RISK`, `OVERSTOCK_RISK`, `SLOW_MOVING_INVENTORY`, `ORDER_DELAY_RISK`, `SUPPLIER_DELAY_RISK`, `LOW_MARGIN_RISK`), pluggable rules, scheduled scan.
+- **Deterministic risk engine** — 6 risk types (`STOCKOUT_RISK`, `OVERSTOCK_RISK`, `SLOW_MOVING_INVENTORY`, `ORDER_DELAY_RISK`, `SUPPLIER_DELAY_RISK`, `LOW_MARGIN_RISK`), pluggable rules, scheduled scan, active-event deduplication, and system resolution.
 - **AI daily operations brief** — provider-agnostic BYOK (OpenAI, Anthropic, Ollama), prompt versioning, audit trail, **rule-based fallback** when AI is unavailable or hallucinates.
 - **Dashboard** — total products, open orders, delayed orders, high-risk products, open risks, supplier reliability ranking, top stockout risks, slow-moving list, recent movements, recent risks, latest brief.
 - **Reports** — Daily Ops Brief, Inventory Risk, Supplier SLA, Order Delay, Product Margin (JSON-first).
 - **CSV import** — idempotent, row-level errors, file-hash dedup, job status tracking.
 - **Audit log** — every sensitive action logged with actor, before/after snapshot, request ID.
-- **PostgreSQL outbox** — CloudEvents 1.0 envelope, scheduler poller, future Kafka migration without contract change.
+- **PostgreSQL outbox** — CloudEvents 1.0 envelope, scheduler poller, idempotent processed-event tracking, retry/dead-letter handling, and future Kafka migration without contract change.
 
 ## Architecture at a glance
 
@@ -110,7 +143,7 @@ flowchart LR
 | Deployment | Docker (multi-stage JRE 21 slim), Cloudflare Pages, Render Free, Neon Free |
 | Events | PostgreSQL outbox + CloudEvents 1.0 envelope; optional Kafka/Redpanda in local full stack |
 
-## Hosted Slim vs Local Full Stack
+## Target Hosted Slim vs Local Full Stack
 
 | Aspect | Hosted Slim (free demo) | Local Full Stack (dev/observability) |
 |---|---|---|
@@ -120,7 +153,7 @@ flowchart LR
 | Cache | Caffeine (or optional Upstash Redis) | Redis in Docker Compose |
 | Event bus | PostgreSQL outbox (in-process consumers) | Outbox + Kafka/Redpanda publishing |
 | Metrics | Actuator + Micrometer | Prometheus + Grafana dashboards |
-| Cost | $0/month (verified 2026-07-10) | Local machine only |
+| Cost | $0/month (verified 2026-07-13) | Local machine only |
 | Compose file | `docker-compose.yml` (profile `local`) | `docker-compose.full.yml` (profile `fullstack`) |
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and platform validation.
@@ -141,6 +174,7 @@ Prerequisites: Docker Desktop and Git. Java 21 is required only when running Gra
 ```bash
 git clone https://github.com/<you>/opspulse-ai.git
 cd opspulse-ai
+# Copy .env.example to .env and set JWT_SECRET to a random 32+ character value.
 docker compose up --build -d
 docker compose ps
 
@@ -159,7 +193,30 @@ curl -H "X-Request-Id: local-check-1" http://localhost:8080/actuator/health
 docker compose down
 ```
 
-The Phase 0 stack contains only the Spring Boot backend and PostgreSQL. Flyway is enabled, but feature migrations and demo data are added in later phases.
+The local profile applies the identity migrations and seeds five demo-only users.
+All use password `OpsPulseDemo!2026`: `admin@opspulse.demo`,
+`manager@opspulse.demo`, `operator1@opspulse.demo`,
+`operator2@opspulse.demo`, and `viewer@opspulse.demo`. Production never loads
+this seed location. Registration defaults to `ADMIN_ONLY`; a self-hosted
+environment may explicitly set `REGISTRATION_MODE=PUBLIC_VIEWER`, which can
+create only `VIEWER` users.
+
+Runtime configuration:
+
+| Variable | Required/default | Purpose |
+|---|---|---|
+| `JWT_SECRET` | Required; at least 32 characters | Signs access and refresh JWTs. Never commit a real value. |
+| `JWT_ACCESS_TOKEN_TTL_SECONDS` | `900` | Access-token lifetime. |
+| `JWT_REFRESH_TOKEN_TTL_SECONDS` | `604800` | Refresh-token lifetime. |
+| `REGISTRATION_MODE` | `ADMIN_ONLY` | Set `PUBLIC_VIEWER` only when public viewer registration is intentional. |
+| `BCRYPT_STRENGTH` | `12` | BCrypt work factor. Tests override this for speed. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` locally | Comma-separated trusted frontend origins. |
+| `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Local defaults are in `application-local.yml` | Host-run local PostgreSQL connection. Docker Compose derives these from `POSTGRES_*`. |
+| `ALLOW_NEGATIVE_STOCK` | `false` | Allows an inventory movement to produce a negative balance. Keep disabled unless the business explicitly approves backorders. |
+
+`/actuator/health`, `/actuator/info`, OpenAPI, and Swagger UI are public. The
+Prometheus scrape endpoint at `/actuator/prometheus` requires an `ADMIN` bearer
+token.
 
 To run the build directly with a local Java 21 installation:
 
@@ -167,18 +224,19 @@ To run the build directly with a local Java 21 installation:
 ./gradlew clean test bootJar
 ```
 
-## Quick start (local full stack)
+## Local full stack (optional — Phase 7)
 
-```bash
-docker compose -f docker-compose.full.yml up --build
-# Redpanda: localhost:9092
-# Prometheus: localhost:9090
-# Grafana: localhost:3001 (admin/admin)
-```
+`docker-compose.full.yml` provides an optional local profile with PostgreSQL,
+Redpanda, Redis, Prometheus, and Grafana. Start it with
+`docker compose -f docker-compose.full.yml --profile fullstack up --build`.
+The current outbox delivery path remains durable in-process; Redpanda is
+provisioned for future transport integration. The `fullstack` Spring profile
+enables local Prometheus scraping without changing the default protected
+actuator contract.
 
 ## Deployment overview
 
-OpsPulse-AI targets **free-tier-only** services. Availability and limits were verified on 2026-07-10 but require periodic manual verification before deployment because provider pricing can change:
+OpsPulse-AI targets **free-tier-only** services. Availability and limits were verified on 2026-07-13 but require periodic manual verification before deployment because provider pricing can change:
 
 | Layer | Service | Verified limits |
 |---|---|---|
@@ -203,33 +261,76 @@ Full deploy steps, env vars, and the **platform validation checklist** (must pas
 
 ## Sample data
 
-The demo dataset (Flyway `R__seed_demo_data.sql`) models a fictional SME distributor:
-
-- **5 users**: 1 admin, 1 manager, 2 operators, 1 viewer (passwords documented post-deploy).
-- **30 products** across 5 categories (Widgets, Gadgets, Tools, Consumables, Accessories).
-- **8 suppliers** with varied lead times (3 chronically late).
-- **60 orders** spanning NEW, CONFIRMED, PICKING, SHIPPED, DELAYED, CANCELLED.
-- **20 purchase orders** with realistic delivery performance.
-- **~200 inventory movements** over the past 60 days.
-
-Triggering a risk scan + brief on this dataset produces: ~3 critical stockouts, ~2 supplier delays, ~5 slow-moving SKUs, ~4 at-risk orders — enough to demonstrate the brief's value without overwhelming a reviewer.
+The repeatable migration (`R__seed_demo_data.sql`) seeds five local-only
+users: 1 admin, 1 manager, 2 operators, and 1 viewer. Their shared demo password
+is documented in the local quick start above. Phase 2 deliberately adds no
+business seed rows; products, suppliers, orders, purchase orders, and inventory
+movements are created through their APIs. Phase 3 integration tests use isolated
+transaction-scoped business fixtures; the local seed remains user-only.
 
 ## API docs
 
 - **Swagger UI (hosted):** `https://opspulse-ai.onrender.com/swagger-ui.html` _(TBD)_
 - **OpenAPI spec (hosted):** `https://opspulse-ai.onrender.com/v3/api-docs` _(TBD)_
 - **API contract plan:** [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
+- **Phase 7 local UAT:** [docs/PHASE7_UAT.md](docs/PHASE7_UAT.md)
+- **Phase 8 hosted handoff:** [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md)
 
-Endpoint groups: `/api/auth`, `/api/users`, `/api/products`, `/api/suppliers`, `/api/orders`, `/api/inventory-movements`, `/api/purchase-orders`, `/api/risks`, `/api/ai/recommendations`, `/api/reports`, `/api/imports`, `/api/audit-logs`, `/api/dashboard`, `/actuator/health`.
+Implemented through Phase 6 on the backend, with the Phase 5/6 console in
+`frontend/`: `/api/auth`, `/api/audit-logs`, `/api/products`,
+`/api/suppliers`, `/api/orders`, `/api/purchase-orders`,
+`/api/inventory-movements`, `/api/risks`, `/api/admin/outbox-events`,
+`/api/ai/recommendations`, `/api/imports`, `/api/reports/*`,
+`/actuator/health`, `/actuator/info`, and `/actuator/prometheus`. List APIs are paginated and support the filters and sort
+fields defined by the service. All authenticated roles may read Phase 2 data;
+`ADMIN` and `OPERATOR` perform operational writes, only `ADMIN` deactivates
+products/suppliers, and `ADMIN`/`MANAGER` perform post-draft PO transitions.
+
+Phase 2 verification commands:
+
+```bash
+./gradlew clean test --no-daemon
+./gradlew clean build --no-daemon
+./gradlew check --no-daemon
+docker compose config --quiet
+```
+
+Phase 3 adds deterministic rule and delivery verification through the same
+Gradle test suite, including Testcontainers coverage for risk scans, lifecycle
+deduplication, CloudEvents idempotency, retry/dead-letter handling, and RBAC.
+
+Flyway applies `V3` through `V11` after the Phase 1 migrations. The hosted
+outbox processor dispatches supported CloudEvents through an in-process durable
+acknowledgement boundary; external publication remains deferred.
+
+Phase 4 exposes synchronous brief generation. The Spring AI OpenAI-compatible
+adapter is enabled only when `AI_API_KEY` is configured; otherwise (or after a
+provider failure, timeout, malformed response, or hallucinated risk reference)
+the deterministic `RULE_BASED` brief is persisted and returned with `200 OK`.
+Prompts, credentials, raw provider payloads, and stack traces are never returned
+or stored.
+
+Phase 6 adds CSV import jobs for products, suppliers, orders, inventory, and
+purchase orders. Jobs are bounded to 10 MiB/10,000 rows, replayed by
+`Idempotency-Key`, deduplicated by SHA-256 content hash, and expose sanitized
+row errors. Reports are read-only JSON aggregates with Micrometer request and
+latency metrics. The real-API frontend smoke remains gated by
+`E2E_API_BASE_URL`, `E2E_EMAIL`, and `E2E_PASSWORD`.
+
+Phase 7 adds JaCoCo coverage enforcement for risk/AI/CloudEvents code, GitHub
+Actions frontend/backend/security jobs, an optional local full stack in
+`docker-compose.full.yml`, Prometheus/Grafana dashboard provisioning, and the
+`scripts/smoke-test.ps1` health/login/operations check. The full stack exposes
+Prometheus locally only; hosted metrics remain protected.
 
 ## Known limitations
 
-- **Render cold starts (30–90s)** after 15 min idle — mitigated by a keep-alive ping every 12 min.
+- **Render cold starts (about 60s)** after 15 min idle — accepted for the free demo and explained in the loading state.
 - **Neon 0.5 GB storage** — demo dataset ~100 MB; cleanup jobs prune `outbox_events`, `processed_events`, `import_row_errors`.
 - **AI brief requires BYOK** — the public hosted demo shows the **rule-based fallback brief** unless the viewer sets `AI_API_KEY` in their own instance.
 - **No PDF export** — reports are JSON-first (out of scope per PRD §6).
 - **Single-tenant for MVP** — schema has `organization_id` placeholder for future multi-tenant.
-- **No WebSockets / SSE** — outbox polling is sufficient for MVP; live dashboard deferred.
+- **No live push in the MVP** — outbox polling is sufficient; SSE/WebSocket delivery is deferred.
 - **Single backend instance on Render free** — no HA; durability lives in Neon.
 
 ## Future improvements
@@ -280,6 +381,7 @@ gantt
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Cloudflare + Render + Neon + Upstash; env vars; platform validation checklist |
 | [docs/RISK_REGISTER.md](docs/RISK_REGISTER.md) | 15 technical & product risks with mitigations and review cadence |
 | [docs/GITHUB_ISSUES.md](docs/GITHUB_ISSUES.md) | ~55 suggested issues with labels, milestones, acceptance criteria |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Local prerequisites, verification commands, and project contribution rules |
 
 ## License
 

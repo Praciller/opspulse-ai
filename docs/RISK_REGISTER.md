@@ -1,7 +1,7 @@
 # OpsPulse-AI — Risk Register
 
-> Status: Draft v0.1
-> Last updated: 2026-07-10
+> Status: Phase 4 implementation baseline
+> Last updated: 2026-07-17
 > Companion: [PRD.md](PRD.md), [ARCHITECTURE.md](ARCHITECTURE.md), [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 1. Purpose
@@ -25,12 +25,12 @@ flowchart TB
 | ID | Risk | Category | Likelihood | Impact | Severity | Mitigation | Contingency | Owner | Review | Status |
 |---|---|---|---|---|---|---|---|---|---|---|
 | R-01 | Free-tier backend memory ceiling < 512MB causes OOM under AI call + dashboard load | Technical | High | High | Critical | JVM tuning (`-XX:MaxRAMPercentage=75 -XX:+UseSerialGC`); slim Docker image; lazy JPA; Caffeine cache instead of Redis when RAM tight; AI response streamed/parsed without holding full buffer | Reduce batch size in outbox processor; disable Redis adapter; switch to rule-based brief | Backend | 2026-10-10 | Open |
-| R-02 | Render free-tier cold start 30–90s after 15 min idle | Technical | High | Low | Medium | Keep-alive ping every 12 min to `/actuator/health` via cron-job.org or GitHub Actions; clearly document expected cold start in README | Move to Fly.io or accept cold start; upgrade to Render Individual ($7/mo) if reviewer complaints | Infra | 2026-10-10 | Open |
+| R-02 | Render free-tier cold start of about 1 minute after 15 min idle | Technical | High | Low | Medium | Show a clear waking-up state; retry health/API calls; document the expected cold start in README | Accept the cold start for the portfolio demo; reassess hosting only if it materially harms evaluation | Infra | 2026-10-13 | Open |
 | R-03 | Neon free-tier 0.5 GB storage exceeded by audit_logs / outbox_events growth | Technical | Medium | High | High | Cleanup jobs (outbox 30d, processed_events 30d, import_row_errors 90d, refresh_tokens expired+7d); document retention in [DATA_MODEL.md §12](DATA_MODEL.md); monitor storage via `/actuator/prometheus` (Neon exporter optional) | Manually purge old audit_logs (keep last 90d); upgrade to Neon Launch | Backend | 2026-10-10 | Open |
 | R-04 | AI provider failure / timeout / rate limit breaks brief feature | Technical | Medium | High | High | Rule-based fallback brief ([ADR-003](ADR/ADR-003-use-byok-ai-provider.md), [ADR-005](ADR/ADR-005-risk-engine-before-ai.md)); 15s timeout + 1 retry on 5xx; `ai_usage_audit` records failure class | Fallback is automatic; UI labels "AI disabled — showing rule-based brief" | AI | 2026-10-10 | Open |
 | R-05 | AI hallucinates metrics not grounded in risk events | AI | Medium | High | High | Risk engine deterministic-first; response parser validates `riskEventIds` exist; reject responses referencing unknown ids; rule-based fallback | Parser rejects → fallback brief; flag in UI | AI | 2026-10-10 | Open |
 | R-06 | AI cost overrun under BYOK (user-owned key) | Product | Low | Low | Low | BYOK — cost belongs to user, not project owner; document expected token usage per brief; allow user to disable AI via env | User revokes key; rule-based brief runs | Product | 2026-10-10 | Open |
-| R-07 | CSV import data quality (encoding, duplicate rows, malformed fields) | Technical | Low | High | High | Row-level validation; idempotency via `Idempotency-Key` + file hash; `import_row_errors` table with raw row + error; preview endpoint (future) | Reject file; return row errors; user fixes and re-uploads with new idempotency key | Backend | 2026-10-10 | Open |
+| R-07 | CSV import data quality (encoding, duplicate rows, malformed fields) | Technical | Low | High | High | Phase 6 bounded UTF-8 parser; row-level validation; idempotency via `Idempotency-Key` + file hash; `import_row_errors` table with bounded raw row + sanitized error; preview endpoint remains future | Reject file; return row errors; user fixes and re-uploads with new idempotency key | Backend | 2026-10-10 | Mitigated |
 | R-08 | Stock consistency bug from concurrent inventory adjustments | Technical | Low | High | High | Pessimistic row lock on `products` during movement (`SELECT FOR UPDATE`); optimistic `version` column for non-movement updates; transactional movement insert + stock update + audit + outbox | Retry on `OptimisticLockException`; admin reconciliation report | Backend | 2026-10-10 | Open |
 | R-09 | Outbox retry storm / poison messages | Technical | Medium | Medium | Medium | Exponential backoff (1s,2s,4s,8s,16s); max 5 retries then `DEAD`; admin endpoint to replay/discard; `next_attempt_at` indexed for poller | Mark DEAD; manual intervention via admin endpoint | Backend | 2026-10-10 | Open |
 | R-10 | Scope creep (PDF export, multi-tenant, more risk types, mobile) | Product | High | Medium | High | PRD §6 out-of-scope explicit; ROADMAP phases enforced; ADRs gate new architecture decisions | Defer to Phase 8+ or future repo | Product | continuous | Open |
@@ -79,7 +79,7 @@ flowchart TB
 ## 6. Residual Risk Summary
 
 After mitigations, residual risk is **Medium** overall:
-- Cold start UX (R-02) is accepted as a free-tier trade-off, mitigated by keep-alive.
+- Cold start UX (R-02) is accepted as a free-tier trade-off and handled explicitly in the UI.
 - Single-instance no-HA (Render free) is accepted; data durability lives in Neon.
 - AI hallucination (R-05) is contained by deterministic risk engine + parser, but cannot be zero.
 - Free-tier platform risk (R-11) is inherent; mitigation is monitoring + migration playbook.

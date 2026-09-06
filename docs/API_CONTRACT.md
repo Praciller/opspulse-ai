@@ -44,10 +44,18 @@ Response `401 Unauthorized` on bad credentials (audit logged).
 { "refreshToken": "..." }
 ```
 Response `200 OK`: same shape as login. Refresh token rotated; old one revoked.
+Reusing a revoked refresh token revokes the entire token family for that login
+session and returns `401 Unauthorized`.
 
 ### 2.3 Logout
 
-`POST /api/auth/logout` — revokes refresh token. `204 No Content`.
+`POST /api/auth/logout`
+```json
+{ "refreshToken": "..." }
+```
+Revokes the refresh-token family for the matching stored hash. The response is
+idempotent `204 No Content` and does not disclose whether the token was
+already revoked, malformed, or expired.
 
 ### 2.4 Register (admin-only in hosted demo; open in self-hosted)
 
@@ -55,14 +63,30 @@ Response `200 OK`: same shape as login. Refresh token rotated; old one revoked.
 ```json
 { "email": "...", "password": "...", "fullName": "...", "roles": ["OPERATOR"] }
 ```
-`201 Created` returns user (no password). Only `ADMIN` may assign roles other than `VIEWER`.
+`201 Created` returns user (no password). Passwords must contain 12–72 UTF-8
+bytes. `REGISTRATION_MODE` defaults to `ADMIN_ONLY`; self-hosted deployments may
+explicitly select `PUBLIC_VIEWER`. Public registration always creates a
+`VIEWER`. Only an authenticated `ADMIN` may assign any other role.
 
 ### 2.5 JWT Layout
 
 - Header: `alg=HS256`, `typ=JWT`.
 - Claims: `sub` (user id), `email`, `roles` (array), `iat`, `exp` (15 min).
-- Refresh token: separate JWT, `exp` 7 days, stored hashed in `refresh_tokens`.
+- Refresh token: separate JWT with `token_use=refresh`, `exp` 7 days, stored as
+  SHA-256 hash plus `family_id` in `refresh_tokens`. Raw refresh tokens are
+  never persisted or logged.
+- Issuer (`iss`) and audience (`aud`) claims are not part of the approved MVP
+  contract and are not validated.
 - All protected endpoints: `Authorization: Bearer <accessToken>`.
+
+### 2.6 Authentication audit events
+
+- Successful login: `action=auth.login.success`, `entityType=USER`, with actor
+  and entity user IDs.
+- Failed login: `action=auth.login.failure`, `entityType=USER`, with actor and
+  entity IDs omitted to avoid user-enumeration signals.
+- Both include `requestId`, timestamp, and client IP when available. Passwords
+  and token values are never stored in audit rows or logs.
 
 ## 3. RBAC Matrix
 
@@ -226,6 +250,19 @@ Purchase orders are retained after creation; use the `CANCELLED` status rather t
 | POST | `/{id}/resolve` | ADMIN, MANAGER |
 | POST | `/{id}/dismiss` | ADMIN, MANAGER |
 
+Risk list supports `riskType`, `severity`, `status`, `entityType`, `entityId`,
+`from`, `to`, pagination, and whitelisted sorting. `POST /scan` is synchronous
+and returns `{ evaluatedEntities, createdRiskEvents, completedAt }`.
+
+### 6.8.1 `/api/admin/outbox-events`
+| Method | Path | RBAC |
+|---|---|---|
+| POST | `/{id}/replay` | ADMIN |
+| POST | `/{id}/discard` | ADMIN |
+
+Both operations apply only to `DEAD` rows, preserve the payload, return status
+metadata without the payload, and write an audit event.
+
 ### 6.9 `/api/ai/recommendations`
 | Method | Path | RBAC |
 |---|---|---|
@@ -235,6 +272,13 @@ Purchase orders are retained after creation; use the `CANCELLED` status rather t
 | POST | `/{id}/approve` | ADMIN, MANAGER |
 | POST | `/{id}/reject` | ADMIN, MANAGER |
 | PATCH | `/{id}/feedback` | ADMIN, MANAGER |
+
+Generation defaults to `topN=5` and the active prompt version; `topN` is bounded
+to 20 and risks are selected by severity then creation time. `GENERATED` may
+transition once to `APPROVED` or `REJECTED`; terminal states return the standard
+conflict envelope. Feedback is limited to 2,000 characters. All write actions
+carry the request ID into the audit row, and list/detail responses never expose
+prompts, credentials, provider errors, or raw AI payloads.
 
 ### 6.10 `/api/reports`
 | Method | Path | Description |
@@ -247,6 +291,14 @@ Purchase orders are retained after creation; use the `CANCELLED` status rather t
 
 All `GET`, RBAC: any authed.
 
+Reports return deterministic JSON with an `asOf` timestamp. The report shapes
+are stable: inventory risk returns `bySeverity`, `byType`, and `topRisks`;
+supplier SLA returns per-supplier received/late counts and percentages; order
+delay returns `byStatus` and delayed order rows; product margin returns
+per-product cost, selling price, margin amount/percentage, and `riskLevel`;
+daily ops brief returns the latest brief summary, provenance, actions, and
+message drafts (or empty values when no brief exists).
+
 ### 6.11 `/api/imports`
 | Method | Path | RBAC |
 |---|---|---|
@@ -254,6 +306,15 @@ All `GET`, RBAC: any authed.
 | GET | `/{id}` | ADMIN, MANAGER, OPERATOR |
 | GET | `/{id}/errors` | ADMIN, MANAGER, OPERATOR |
 | POST | `/` (multipart) | ADMIN, MANAGER, OPERATOR |
+
+`POST /api/imports` requires `file`, `type` (`products|suppliers|orders|inventory|po`),
+and an `Idempotency-Key` (1–128 characters). Files are UTF-8 CSV, limited to
+10 MiB and 10,000 rows. A new job returns `202 Accepted` with `PENDING`; a
+replay of the same key returns the existing job with `200 OK`. Duplicate
+content for the same type is rejected with `IMPORT_DUPLICATE_CONTENT`.
+Processing transitions `PENDING → PROCESSING → COMPLETED|FAILED`. Completed
+jobs may contain row errors. Errors expose only bounded `rowNumber`, `rawRow`,
+`errorCode`, and sanitized `errorMessage` fields.
 
 ### 6.12 `/api/audit-logs`
 | Method | Path | RBAC |
@@ -265,11 +326,11 @@ All `GET`, RBAC: any authed.
 | Method | Path | RBAC |
 |---|---|---|
 | GET | `/` | any authed |
-| GET | `/supplier-reliability` | any authed |
-| GET | `/top-stockout-risks` | any authed |
-| GET | `/slow-moving` | any authed |
-| GET | `/recent-movements` | any authed |
-| GET | `/recent-risks` | any authed |
+
+The root snapshot is implemented as a batched read-only aggregate for the
+console. Detailed dashboard projections (`/supplier-reliability`,
+`/top-stockout-risks`, `/slow-moving`, `/recent-movements`, and `/recent-risks`)
+remain future projection endpoints and are not advertised as implemented.
 
 ### 6.14 `/actuator`
 | Method | Path | Public? |
@@ -440,6 +501,12 @@ Form fields: `file` (CSV), `type` (products|suppliers|orders|inventory|po)
 }
 ```
 Repeat with same `Idempotency-Key` → `200 OK` with existing job (idempotent).
+
+CSV row conventions are one entity/item per row. Product rows use `sku,name,category,unit,safetyStock,reorderPoint,cost,sellingPrice`;
+supplier rows use `name,email,phone,address,averageLeadTimeDays,expectedSlaDays`;
+order rows use `orderNumber,customerName,expectedShipDate,productId,quantity,unitPrice`;
+inventory rows use `productId,movementType,quantity,reason,referenceType,referenceId`;
+and purchase-order rows use `poNumber,supplierId,expectedDeliveryDate,productId,quantity,unitCost`.
 
 ### 7.7 Dashboard aggregate
 `GET /api/dashboard`

@@ -1,7 +1,7 @@
 # OpsPulse-AI — Roadmap
 
 > Status: Draft v0.1
-> Last updated: 2026-07-10
+> Last updated: 2026-07-17
 > Companion: [PRD.md](PRD.md), [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## Phase Overview
@@ -88,7 +88,7 @@ flowchart LR
 **Deliverables:**
 - Spring Security + JWT filter chain; BCrypt password encoder.
 - Roles `ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`; method-level `@PreAuthorize`.
-- Flyway `V1__init_auth_user.sql`, `V8__audit_logs.sql`.
+- Flyway `V1__init_auth_user.sql`, `V2__audit_logs.sql`.
 - `CorrelationIdFilter` + MDC logging (JSON).
 - `@RestControllerAdvice` global error envelope.
 - Actuator: `/actuator/health`, `/actuator/info`, `/actuator/prometheus`.
@@ -155,6 +155,11 @@ flowchart LR
 - Outbox row NEW → PROCESSED within scheduler interval.
 - Replay of same CloudEvents `id` does not double-apply.
 
+**Status:** Implemented locally and verified with PostgreSQL 16 Testcontainers.
+Phase 3 uses V8/V9 migrations, synchronous risk scan/action APIs, five retry
+attempts with exponential backoff, and ADMIN-only dead-letter replay/discard
+operations.
+
 **Dependencies:** Phase 2.
 
 **Suggested issue labels:** `backend`, `ai`, `database`, `tests`.
@@ -178,11 +183,18 @@ flowchart LR
 - Endpoint `POST /api/ai/recommendations/generate` + approve/reject/feedback.
 
 **Exit criteria:**
-- BYOK brief generated when `AI_API_KEY` set.
-- Fallback brief generated when key absent.
-- Prompt version persisted; `ai_usage_audit` row created per call.
-- No `AI_API_KEY` value in any log line (grep test).
-- Hallucination guard test: mocked AI response with bad `riskEventId` triggers fallback.
+- BYOK brief generated when `AI_API_KEY` is set through the Spring AI OpenAI-compatible adapter.
+- Fallback brief generated as a stable `200 OK` response when the key is absent, the provider fails, or validation rejects a response.
+- Prompt version, selected risk links, and sanitized `ai_usage_audit` metadata persist in one transaction; `opspulse.brief.generated` is appended to the outbox.
+- Provider calls are bounded to 15 seconds with one retry for 5xx/timeouts and no retry for 4xx responses.
+- No credentials, prompts, raw provider payloads, or stack traces are returned or persisted.
+- Hallucinated or unselected `riskEventId` references trigger the deterministic fallback.
+
+**Status:** Implemented locally. V10 is applied after V9; API lifecycle and
+OpenAPI contracts are covered by integration tests, and the rule-based client
+remains available without provider credentials. Scheduled generation, Kafka
+publication, and hosted deployment remain deferred; frontend, import, and
+report surfaces are completed in Phases 5–6.
 
 **Dependencies:** Phase 3.
 
@@ -212,6 +224,13 @@ flowchart LR
 
 **Dependencies:** Phase 2 (CRUD contracts); can overlap with Phases 3–4 using mocked risk/brief endpoints.
 
+**Status:** Implemented locally on 2026-07-17. The `frontend/` Vite
+application has typed API clients, refresh-rotating authentication, protected
+role-aware routes, deterministic opt-in fixtures, Phase 6 import/report API
+surfaces, Cloudflare Pages SPA configuration, unit/component tests, mock
+Playwright flow, and axe accessibility coverage. The optional real-API smoke is
+gated by `E2E_API_BASE_URL`, `E2E_EMAIL`, and `E2E_PASSWORD`.
+
 **Suggested issue labels:** `frontend`, `portfolio`, `tests`.
 
 ---
@@ -235,6 +254,12 @@ flowchart LR
 - All 5 reports return correct aggregates on demo data.
 - Duplicate import blocked by file hash + idempotency key.
 
+**Status:** Implemented locally on 2026-07-17. V11 import persistence, bounded
+CSV processing, idempotency/file-hash deduplication, row-level errors, five
+authenticated JSON reports, frontend wiring, metrics, and Testcontainers/API
+coverage are present. Real-API smoke remains environment-gated; deployment,
+hosted verification, and screenshots remain later phases.
+
 **Dependencies:** Phase 4 (for daily ops brief report); Phase 5 (frontend pages).
 
 **Suggested issue labels:** `backend`, `frontend`, `database`, `tests`.
@@ -249,14 +274,14 @@ flowchart LR
 - Testcontainers integration suite covering all critical API flows.
 - Unit test coverage >= 80% on domain + risk engine + AI prompt builder + CloudEvents envelope.
 - JaCoCo report in CI.
-- Local full stack: `docker-compose.full.yml` with Redpanda + Prometheus + Grafana; outbox publishes to Kafka; Grafana dashboards (JVM, risk generation, outbox lag, AI latency).
+- Local full stack: `docker-compose.full.yml` with Redpanda + Prometheus + Grafana; the durable outbox remains in-process while Kafka publication is a later transport milestone; Grafana dashboards cover JVM, risk generation, outbox lag, AI latency, imports, and reports.
 - Dockerfile slim image (multi-stage, JRE 21, JVM args for free-tier).
 - Render deployment config (Docker, `PORT`, health check).
 - Cloudflare Pages deployment (frontend).
 - Neon Free Postgres project; Flyway migrations applied via release stage.
 - Optional Upstash Redis cache (dashboard aggregate caching).
 - Smoke test script: `/actuator/health`, login, dashboard, brief.
-- Keep-alive ping (cron-job.org or GitHub Actions) every 12 min.
+- Cold-start loading state and retry behavior for an idle Render service.
 
 **Exit criteria:**
 - Hosted demo live: frontend URL + backend URL + Swagger UI.
@@ -269,6 +294,11 @@ flowchart LR
 **Dependencies:** Phases 1–6.
 
 **Suggested issue labels:** `tests`, `infra`, `deployment`, `observability`.
+
+**Status:** Local hardening implemented on 2026-07-18. CI coverage/security
+gates, optional Prometheus/Grafana/Redpanda compose assets, Docker verification,
+and environment-gated smoke tooling are present. Hosted provisioning and
+verification remain external.
 
 ---
 
@@ -295,6 +325,12 @@ flowchart LR
 **Dependencies:** Phase 7.
 
 **Suggested issue labels:** `portfolio`, `docs`.
+
+**Status:** Hosted portfolio publication remains pending hosted URLs,
+screenshots, and user-provided publication assets.
+
+The executable handoff checklist is maintained in
+[PHASE8_HANDOFF.md](PHASE8_HANDOFF.md).
 
 ---
 

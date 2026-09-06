@@ -1,7 +1,7 @@
 # OpsPulse-AI — Architecture
 
-> Status: Draft v0.1
-> Last updated: 2026-07-10
+> Status: Phase 6 implemented locally
+> Last updated: 2026-07-17
 > Companion: [PRD.md](PRD.md), [DATA_MODEL.md](DATA_MODEL.md), [API_CONTRACT.md](API_CONTRACT.md), [ADR/](ADR/)
 
 ## 1. Architecture Overview & Principles
@@ -106,13 +106,13 @@ flowchart TB
     UI --> Backend
     Backend --> Postgres
     Backend --> Redis
-    Backend -->|outbox published| Redpanda
+    Backend -.future transport.-> Redpanda
     Backend -.scraped by.-> Prom
     Prom --> Grafana
 ```
 
 Local full stack demonstrates:
-- Outbox → Kafka/Redpanda publishing (no domain change vs hosted).
+- Redpanda infrastructure alongside the durable in-process outbox; Kafka publication remains a later transport milestone.
 - Prometheus scraping `/actuator/prometheus`.
 - Grafana dashboards (JVM, risk generation, outbox lag, AI latency).
 - Redis caching for hot dashboard queries.
@@ -147,8 +147,8 @@ Cross-feature synchronous workflows call another feature's **inbound application
 One Gradle module produces one Spring Boot deployable. Package boundaries provide modularity for the MVP:
 
 ```
-com.opspulse.ai
-├── auth
+com.opspulse
+├── identity
 │   ├── domain
 │   ├── application
 │   │   └── port (inbound and outbound)
@@ -246,6 +246,11 @@ interface RiskRule {
 ```
 Rules are Spring beans discovered at startup. New rule = new bean, no core flow change (NFR-2).
 
+Phase 3 keeps one active event per generated dedup key. A scan refreshes active
+evidence, system-resolves cleared conditions, and emits a new historical event
+when a terminal condition recurs. Risk thresholds are loaded from typed scalar
+`app_config` values.
+
 ### 6.2 Severity mapping
 
 | Severity | Heuristic |
@@ -260,7 +265,7 @@ Rules are Spring beans discovered at startup. New rule = new bean, no core flow 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sch as BriefScheduler
+    participant C as AI Brief API
     participant UC as BriefUseCase
     participant RiskRepo as RiskEventRepository
     participant PB as PromptBuilder
@@ -269,7 +274,7 @@ sequenceDiagram
     participant Audit as AuditService
     participant Repo as AiRecommendationRepository
 
-    Sch->>UC: generateDailyBrief()
+    C->>UC: generate(topN, promptVersion)
     UC->>RiskRepo: topOpenRisks(limit=20)
     RiskRepo-->>UC: risks
     UC->>PB: buildPrompt(risks, promptVersion)
@@ -285,7 +290,7 @@ sequenceDiagram
     end
     UC->>Repo: save(recommendation + promptVersion + model + inputRiskIds)
     UC->>Audit: auditAIUsage(metadata, no secrets)
-    UC-->>Sch: brief
+    UC-->>C: recommendation (never prompt or provider payload)
 ```
 
 ### 7.1 AI safety policies
@@ -293,7 +298,8 @@ sequenceDiagram
 - Timeout: 15s per call. Retry: 1 retry with 2s backoff (no retry on 4xx).
 - API key: read once from env at adapter construction; never logged; never returned in DTO.
 - Prompt version: stored in `prompt_versions` table; `BriefRequest.promptVersion` immutable.
-- Fallback: rule-based template renders top risks + recommended actions deterministically.
+- Fallback: rule-based template renders top risks + recommended actions deterministically and returns `200 OK` when no key is configured or validation fails.
+- V10 persists prompt versions, recommendations, risk links, and sanitized usage metadata; `opspulse.brief.generated` is written atomically to the outbox.
 - All AI responses marked `generatedBy: AI` and include `riskEventIds` and `sourceMetrics` reference.
 
 ## 8. Outbox Flow
@@ -335,6 +341,9 @@ sequenceDiagram
 
 - Consumers dedupe by `event.id` (CloudEvents id) and `aggregateId + eventType` combination.
 - Outbox `payload.id` is the CloudEvents id; consumers persist processed IDs in `processed_events` table.
+- The hosted Phase 3 consumer registry is a durable acknowledgement boundary;
+  unknown event types retry and become `DEAD` after five attempts. ADMIN users
+  may replay or discard dead rows without exposing payload data.
 
 ## 9. Inventory Transactional Consistency Flow
 
@@ -407,6 +416,15 @@ sequenceDiagram
     end
 ```
 
+Phase 6 uses `V11__import_jobs_row_errors.sql`. Uploads are retained as
+bounded in-memory bytes for the asynchronous handoff; the database stores the
+file hash, idempotency key, status/counts, and bounded row errors. Valid rows
+reuse the existing product, supplier, order, inventory, and purchase-order
+application ports so audit and transactional outbox behavior stays consistent.
+The report service uses batched JDBC aggregates and exposes five read-only
+JSON views; report request counters and latency timers are emitted through
+Micrometer.
+
 ## 11. Cross-Cutting Concerns
 
 | Concern | Implementation |
@@ -416,7 +434,9 @@ sequenceDiagram
 | Error envelope | `@RestControllerAdvice` → `{ code, message, fields, requestId, timestamp }`. |
 | OpenAPI | `springdoc-openapi-starter-webmvc-ui`; spec at `/v3/api-docs`; UI at `/swagger-ui.html`. |
 | Actuator | `/actuator/health`, `/actuator/info`, `/actuator/prometheus`, `/actuator/metrics`. |
-| Security | JWT stateless filter chain; BCrypt password encoder; method-level `@PreAuthorize`. |
+| Phase 6 metrics | `opspulse.import.started/completed/failed/rows` and `opspulse.report.requests/duration`. |
+| Phase 7 observability | Optional `docker-compose.full.yml` runs Prometheus, Grafana, and Redpanda; the provisioned dashboard covers JVM, risk scan, outbox, AI, import, and report metrics. Prometheus is public only in the local `fullstack` profile. |
+| Security | JWT stateless filter chain; BCrypt password encoder; refresh-token family rotation with replay revocation; method-level `@PreAuthorize`. |
 | Validation | Bean Validation on DTOs; service-layer invariants on domain. |
 | Caching | Spring Cache abstraction; Redis adapter optional; default in-memory Caffeine on hosted slim. |
 
@@ -447,7 +467,7 @@ interface OperationsBriefClient {
 | `local` | Minimal local dev | Postgres + backend via `docker-compose.yml`. |
 | `test` | Testcontainers | JPA + integration tests; ephemeral Postgres. |
 | `prod` | Hosted slim | Neon + optional Upstash; no Kafka. |
-| `fullstack` | Local full stack | Adds Kafka/Redpanda publisher + Prometheus scraping. |
+| `fullstack` | Local full stack | Adds Redpanda/Redis infrastructure plus Prometheus/Grafana scraping; Kafka publication remains deferred. |
 
 ## 14. Cross-Module Event Catalog
 

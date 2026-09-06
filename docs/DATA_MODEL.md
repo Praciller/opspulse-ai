@@ -47,11 +47,12 @@
 |---|---|---|
 | `id` | UUID PK | |
 | `user_id` | UUID FK | |
-| `token_hash` | VARCHAR(255) NOT NULL | hash of refresh token |
+| `family_id` | UUID NOT NULL | session family; revoked together on replay/logout |
+| `token_hash` | VARCHAR(255) NOT NULL | SHA-256 hash of refresh token (raw token never stored) |
 | `expires_at` | TIMESTAMPTZ NOT NULL | |
 | `revoked_at` | TIMESTAMPTZ NULL | |
 | `created_at` | TIMESTAMPTZ NOT NULL DEFAULT now() |
-| Index: `idx_refresh_tokens_token_hash` (lookup), `idx_refresh_tokens_user_expires` (cleanup). |
+| Index: `idx_refresh_tokens_token_hash` (lookup), `idx_refresh_tokens_user_expires` (cleanup), `idx_refresh_tokens_family_id` (family revocation). |
 
 ### 2.4 `products`
 | Column | Type | Constraints | Notes |
@@ -163,6 +164,9 @@
 | `resolved_by` UUID NULL | |
 | `organization_id` UUID NULL | |
 | `dedup_key` VARCHAR(128) GENERATED ALWAYS AS (risk_type || ':' || entity_type || ':' || entity_id::text) STORED | |
+
+An active dedup key is unique while status is `OPEN` or `ACKNOWLEDGED`. A cleared
+active event is system-resolved; a later recurrence creates a new historical row.
 
 ### 2.10 `ai_recommendations` / `ai_recommendation_items`
 `ai_recommendations`:
@@ -285,10 +289,9 @@
 |---|---|---|
 | `key` VARCHAR(64) PK | |
 | `value` JSONB NOT NULL | |
-| `updated_at` TIMESTAMPTZ NOT NULL DEFAULT now() | |
-| `updated_by` UUID NULL | |
-
-Holds: `allowNegativeStock`, `slowMovingDays`, `excessiveDaysThreshold`, `lowMarginThresholdPct`, `lateDeliveryRateThreshold`, `riskScanCron`, `briefCron`.
+Holds typed scalar JSON values for `allowNegativeStock`, `slowMovingDays`,
+`excessiveDaysThreshold`, `lowMarginThresholdPct`, `lateDeliveryRateThresholdPct`,
+`orderDelayNearDays`, and `riskScanCron`.
 
 ## 3. Important Indexes
 
@@ -303,7 +306,8 @@ Holds: `allowNegativeStock`, `slowMovingDays`, `excessiveDaysThreshold`, `lowMar
 | `idx_po_supplier_status` | purchase_orders | (supplier_id, status) | supplier stats |
 | `idx_po_items_po` | purchase_order_items | purchase_order_id | po detail |
 | `idx_risk_status_severity_created` | risk_events | (status, severity, created_at DESC) | dashboard top risks |
-| `idx_risk_dedup` | risk_events | (dedup_key, status) | dedup + open lookup |
+| `idx_risk_dedup_status` | risk_events | (dedup_key, status) | dedup + open lookup |
+| `uq_risk_active_dedup` | risk_events | UNIQUE partial on dedup_key where status IN (OPEN, ACKNOWLEDGED) | one active risk per condition |
 | `idx_risk_entity` | risk_events | (entity_type, entity_id) | entity risk lookup |
 | `idx_audit_entity_created` | audit_logs | (entity_type, entity_id, created_at DESC) | entity history |
 | `idx_audit_actor_created` | audit_logs | (actor_user_id, created_at DESC) | user activity |
@@ -547,26 +551,26 @@ erDiagram
 ```
 db/migration/
 ├── V1__init_auth_user.sql
-├── V2__products_suppliers.sql
-├── V3__orders_order_items.sql
-├── V4__inventory_movements.sql
-├── V5__purchase_orders_items.sql
-├── V6__risk_events.sql
-├── V7__ai_recommendations_prompt_versions.sql
-├── V8__audit_logs.sql
-├── V9__outbox_events_processed_events.sql
-├── V10__import_jobs_row_errors.sql
-├── V11__app_config.sql
-├── V12__supplemental_indexes.sql
-└── repeatable
-    └── R__seed_demo_data.sql
+├── V2__audit_logs.sql
+├── V3__products_suppliers.sql
+├── V4__orders_order_items.sql
+├── V5__inventory_movements.sql
+├── V6__purchase_orders_items.sql
+├── V7__outbox_events.sql
+├── V8__risk_events_processed_events.sql
+├── V9__app_config.sql
+├── V10__ai_recommendations_prompt_versions.sql
+├── V11__import_jobs_row_errors.sql
+├── V12__supplemental_indexes.sql (future, only after measured need)
+db/demo/
+└── R__seed_demo_data.sql
 ```
 
 ### 10.2 Rules
 
 - Each migration is **forward-only**; never edit applied migrations.
 - Schema-changing migrations are versioned `V<n>__name.sql`.
-- Seed/demo data is repeatable `R__seed_demo_data.sql` (re-applied when checksum changes) — gated by Spring profile `local`/`test`.
+- Seed/demo data is repeatable `R__seed_demo_data.sql` under `db/demo/` — loaded only when Flyway locations include `classpath:db/demo` (`local`/`test` profiles).
 - `prod` profile does NOT seed demo data.
 - Each `V<n>` migration is wrapped in a transaction (Postgres DDL is transactional).
 - Every table migration creates the critical indexes required by that table's first consumer. `V12__supplemental_indexes.sql` is reserved for measured, non-blocking optimizations found later.

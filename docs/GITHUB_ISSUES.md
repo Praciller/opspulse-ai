@@ -1,7 +1,7 @@
 # OpsPulse-AI — Initial GitHub Issues Plan
 
 > Status: Draft v0.1
-> Last updated: 2026-07-10
+> Last updated: 2026-07-13
 > Companion: [ROADMAP.md](ROADMAP.md), [PRD.md](PRD.md), [ARCHITECTURE.md](ARCHITECTURE.md)
 
 This document is a **planning artifact**. Actual GitHub issues are created by the maintainer (via `gh issue create` or the GitHub UI) using the breakdown below as a template.
@@ -54,7 +54,7 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 |---|---|---|---|---|---|
 | P1-1 | Implement Spring Security + JWT filter chain | `backend`, `security`, `phase-1` | L | Login/refresh/logout work; 401 on bad token | P0-8 |
 | P1-2 | Implement RBAC for 4 roles via `@PreAuthorize` | `backend`, `security`, `phase-1` | M | Role matrix enforced; 403 on wrong role | P1-1 |
-| P1-3 | Flyway V1 init auth/user + V8 audit_logs | `database`, `backend`, `phase-1` | M | Migrations and their critical lookup/audit indexes apply on startup; tables exist | P0-5 |
+| P1-3 | Flyway V1 init auth/user + V2 audit_logs | `database`, `backend`, `phase-1` | M | Migrations and their critical lookup/audit indexes apply on startup; tables exist | P0-5 |
 | P1-4 | BCrypt password encoder + refresh token rotation | `backend`, `security`, `phase-1` | M | Passwords hashed; refresh tokens rotate on use; revoked on logout | P1-1, P1-3 |
 | P1-5 | Global error envelope + `@RestControllerAdvice` | `backend`, `phase-1` | S | All errors return `{code,message,fields,requestId,timestamp}` | P0-8 |
 | P1-6 | Correlation ID filter + MDC structured JSON logging | `backend`, `observability`, `phase-1` | S | `requestId` in every log line; propagated to audit | P0-8 |
@@ -67,11 +67,11 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|
-| P2-1 | Flyway V2 products + supplier migrations + entities/repositories | `database`, `backend`, `phase-2` | M | CRUD endpoints pass integration tests | P1-3 |
-| P2-2 | Flyway V3 orders + order_items; CRUD + status transitions | `database`, `backend`, `phase-2` | L | All 6 statuses reachable via PATCH; audit logged | P1-3 |
-| P2-3 | Flyway V4 inventory_movements; transactional stock update | `database`, `backend`, `phase-2` | L | Stock update + movement + audit + outbox in one TX; negative blocked | P2-1 |
-| P2-4 | Flyway V5 purchase_orders + items; receive endpoint | `database`, `backend`, `phase-2` | L | Receiving PO updates stock + supplier stats | P2-1, P2-3 |
-| P2-5 | Flyway V9 outbox_events + processed_events; OutboxPublisher (write side) | `database`, `backend`, `phase-2` | M | Outbox row and `idx_outbox_status_next` are created; row inserts in same TX as state change | P1-3 |
+| P2-1 | Flyway V3 products + supplier migrations + entities/repositories | `database`, `backend`, `phase-2` | M | CRUD endpoints pass integration tests | P1-3 |
+| P2-2 | Flyway V4 orders + order_items; CRUD + status transitions | `database`, `backend`, `phase-2` | L | All 6 statuses reachable via PATCH; audit logged | P1-3 |
+| P2-3 | Flyway V5 inventory_movements; transactional stock update | `database`, `backend`, `phase-2` | L | Stock update + movement + audit + outbox in one TX; negative blocked | P2-1 |
+| P2-4 | Flyway V6 purchase_orders + items; receive endpoint | `database`, `backend`, `phase-2` | L | Receiving PO updates stock + supplier stats | P2-1, P2-3 |
+| P2-5 | Flyway V7 outbox_events; OutboxPublisher (write side) | `database`, `backend`, `phase-2` | M | Outbox row and `idx_outbox_status_next` are created; row inserts in same TX as state change | P1-3 |
 | P2-6 | CloudEvents envelope builder + unit tests | `backend`, `phase-2` | M | Envelope has all 8 required fields; fixtures per event type | P2-5 |
 | P2-7 | Audit integration on all CRUD operations | `backend`, `phase-2` | M | Every write produces audit row with before/after | P1-9, P2-1..4 |
 | P2-8 | Pagination/filter/sort utilities + DTO projections | `backend`, `phase-2` | M | All list endpoints support page/size/sort/filter | P2-1..4 |
@@ -81,8 +81,8 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|
-| P3-1 | Flyway V6 risk_events migration | `database`, `backend`, `phase-3` | S | Table + critical status/dedup/entity indexes exist; dedup_key generated | P1-3 |
-| P3-1A | Flyway V11 app_config migration + typed configuration access | `database`, `backend`, `phase-3` | M | Default risk thresholds and scheduler settings are persisted and readable without hardcoded rule values | P1-3 |
+| P3-1 | Flyway V8 risk_events + processed_events migration | `database`, `backend`, `phase-3` | S | Tables, constraints, active dedup index, and critical indexes exist | P1-3 |
+| P3-1A | Flyway V9 app_config migration + typed configuration access | `database`, `backend`, `phase-3` | M | Default risk thresholds and scheduler settings are persisted and readable without hardcoded rule values | P1-3 |
 | P3-2 | `RiskRule` interface + Spring bean registry | `backend`, `ai`, `phase-3` | M | Rules discovered at startup; new bean = new rule | P2-1 |
 | P3-3 | `MetricRepository` for pre-computed aggregates (avg daily sales 7d/30d, late delivery rate) | `backend`, `phase-3` | L | Aggregates correct on demo data; no N+1 | P2-1..4 |
 | P3-4 | StockoutRiskRule + OverstockRiskRule + unit tests | `backend`, `ai`, `tests`, `phase-3` | M | Rules produce expected RiskEvent on fixtures | P3-2, P3-3 |
@@ -96,9 +96,13 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 
 ### Phase 4 — AI Recommendations (M4)
 
+**Status:** Implemented locally; V10, provider/fallback generation, lifecycle
+API, audit, and outbox publication are complete. Hosted generation and frontend
+consumption remain later-phase work.
+
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|
-| P4-1 | Flyway V7 ai_recommendations + items + prompt_versions + ai_usage_audit | `database`, `backend`, `ai`, `phase-4` | M | Tables + indexes exist | P1-3 |
+| P4-1 | Flyway V10 ai_recommendations + items + prompt_versions + ai_usage_audit | `database`, `backend`, `ai`, `phase-4` | M | Tables + indexes exist | P1-3 |
 | P4-2 | `OperationsBriefClient` outbound application port + `BriefRequest`/`BriefResponse` value objects | `backend`, `ai`, `phase-4` | S | Port lives under `ai.application.port.out`; no Spring AI types leak into application/domain | P3-1 |
 | P4-3 | `SpringAiBriefClient` adapter with `@ConditionalOnProperty(AI_API_KEY)` | `backend`, `ai`, `phase-4` | L | Bean only when key set; structured output → BriefResponse | P4-2 |
 | P4-4 | `RuleBasedBriefClient` fallback adapter | `backend`, `ai`, `phase-4` | M | Deterministic brief from risk events; same shape as AI | P4-2 |
@@ -131,9 +135,13 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 
 ### Phase 6 — Import & Reports (M6)
 
+**Status:** Implemented locally on 2026-07-17. See the Phase 6 backend and
+frontend verification commands in the repository handoff; hosted smoke and
+deployment remain Phase 7/8 work.
+
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|
-| P6-1 | Flyway V10 import_jobs + import_row_errors | `database`, `backend`, `phase-6` | S | Tables exist | P1-3 |
+| P6-1 | Flyway V11 import_jobs + import_row_errors | `database`, `backend`, `phase-6` | S | Tables exist | P1-3 |
 | P6-2 | CSV parser (Apache Commons CSV) | `backend`, `phase-6` | S | Parses all 5 file types; encoding handled | – |
 | P6-3 | Import service: idempotency + file hash + row validation + async | `backend`, `phase-6` | L | Idempotent replay; row errors returned; job status transitions | P6-1, P6-2 |
 | P6-4 | Import endpoints (POST, GET list, GET id, GET errors) | `backend`, `phase-6` | M | Endpoints match API_CONTRACT.md §6.11 | P6-3 |
@@ -147,6 +155,11 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 
 ### Phase 7 — Tests/Obs/Deploy (M7)
 
+**Status:** Local hardening implemented on 2026-07-18. CI coverage and
+security gates, optional observability compose assets, Docker verification, and
+environment-gated smoke tooling are present. Hosted provisioning remains
+external.
+
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|
 | P7-1 | Testcontainers integration suite for all critical API flows | `tests`, `backend`, `phase-7` | L | Suite green in CI; covers auth, CRUD, risk, brief, import | P1-10 |
@@ -157,12 +170,14 @@ This document is a **planning artifact**. Actual GitHub issues are created by th
 | P7-6 | Neon Free Postgres project + Flyway release stage | `deployment`, `database`, `phase-7` | M | Migrations applied; demo data seeded | P1-3 |
 | P7-7 | Cloudflare Pages production deploy | `deployment`, `frontend`, `phase-7` | S | Production URL live; CORS allowlist set | P5-13 |
 | P7-8 | Optional Upstash Redis cache for dashboard | `backend`, `deployment`, `phase-7` | S | Dashboard < 1.5s warm; cache hit ratio > 80% | P5-5 |
-| P7-9 | Keep-alive ping (cron-job.org or GitHub Actions) every 12 min | `deployment`, `infra`, `phase-7` | S | Service never sleeps > 15 min; logs show pings | P7-5 |
+| P7-9 | Handle Render cold-start UX | `frontend`, `deployment`, `phase-7` | S | UI shows waking-up state and retries transient startup failures | P7-5, P7-7 |
 | P7-10 | Smoke test script (health + login + dashboard + brief) | `tests`, `deployment`, `phase-7` | S | Script exits 0 on healthy demo | P7-5, P7-7 |
 | P7-11 | Free-tier platform validation checklist run | `deployment`, `docs`, `phase-7` | S | DEPLOYMENT.md §10 all rows "Verified" | P7-5..7 |
 | P7-12 | Security review (JWT, CORS, secret hygiene, RBAC) | `security`, `tests`, `phase-7` | M | Checklist passed; no findings high/critical | P1-2, P4-11 |
 
 ### Phase 8 — Portfolio Polish (M8)
+
+**Status:** Pending hosted URLs, screenshots, and publication assets.
 
 | # | Title | Labels | Size | Acceptance criteria | Dependencies |
 |---|---|---|---|---|---|

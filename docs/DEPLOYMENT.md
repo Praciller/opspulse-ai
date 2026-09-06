@@ -1,7 +1,7 @@
 # OpsPulse-AI — Deployment Guide
 
 > Status: Draft v0.1
-> Last updated: 2026-07-10
+> Last updated: 2026-07-13
 > Companion: [ADR-004](ADR/ADR-004-slim-free-tier-deployment.md), [ARCHITECTURE.md](ARCHITECTURE.md), [RISK_REGISTER.md](RISK_REGISTER.md)
 
 ## 1. Deployment Philosophy
@@ -21,14 +21,12 @@ flowchart LR
     Neon[(Neon Free Postgres)]
     Upstash[(Upstash Redis - optional)]
     AI[AI Provider - BYOK]
-    KeepAlive[Keep-alive ping - cron-job.org / GitHub Actions]
 
     User --> Pages
     Pages -->|HTTPS /api| Render
     Render --> Neon
     Render -.optional.-> Upstash
     Render -->|BYOK key from env| AI
-    KeepAlive -->|GET /actuator/health every 12 min| Render
 ```
 
 ## 3. Frontend Deployment — Cloudflare Pages
@@ -58,7 +56,7 @@ flowchart LR
 4. Deploy. Cloudflare assigns `<project>.pages.dev` URL.
 5. (Optional) Add custom domain; Cloudflare provisions TLS.
 
-### 3.4 Limits to remember (verified 2026-07-10)
+### 3.4 Limits to remember (verified 2026-07-13)
 
 - 500 builds/month, 1 concurrent build.
 - 20,000 files/site, 25 MiB max file.
@@ -90,6 +88,8 @@ flowchart LR
 | `JWT_SECRET` | yes | – | 32+ char random; rotate quarterly |
 | `JWT_ACCESS_TOKEN_TTL_SECONDS` | no | `900` | |
 | `JWT_REFRESH_TOKEN_TTL_SECONDS` | no | `604800` | |
+| `BCRYPT_STRENGTH` | no | `12` | BCrypt work factor; do not lower in production |
+| `REGISTRATION_MODE` | no | `ADMIN_ONLY` | `ADMIN_ONLY` or explicit self-hosted `PUBLIC_VIEWER` |
 | `AI_API_KEY` | no | – | BYOK; absent → rule-based brief |
 | `AI_PROVIDER` | no | `openai` | openai/anthropic/ollama |
 | `AI_MODEL` | no | `gpt-4o-mini` | |
@@ -99,7 +99,7 @@ flowchart LR
 | `CORS_ALLOWED_ORIGINS` | yes | `https://<project>.pages.dev` | allowlist |
 | `ALLOW_NEGATIVE_STOCK` | no | `false` | admin config |
 | `OUTBOX_POLL_INTERVAL_MS` | no | `5000` | |
-| `RISK_SCAN_CRON` | no | `0 0 7 * * *` | 7am daily |
+| `app_config.riskScanCron` | no | `0 0 7 * * *` | Persisted typed scheduler setting; 7am daily |
 | `BRIEF_CRON` | no | `0 5 7 * * *` | 7:05am daily |
 
 ### 4.3 Deploy steps
@@ -112,13 +112,13 @@ flowchart LR
 6. Verify `/actuator/health` returns 200 within 90s.
 7. Run Flyway migrations (see §5.4).
 
-### 4.4 Limits to remember (verified 2026-07-10)
+### 4.4 Limits to remember (verified 2026-07-13)
 
-- 750 instance-hours/workspace/month (single service 24/7 = 744h, fits).
-- Spins down after 15 min idle; cold start 30–90s.
+- 750 instance-hours/workspace/month; idle spin-down preserves the shared quota.
+- Spins down after 15 min idle; cold start takes about 1 minute.
 - 5 GB outbound bandwidth/month.
 - 500 build minutes/month.
-- No persistent disk, no WebSockets, no private networking, no SSH.
+- No persistent disk, inbound private networking, or SSH. WebSockets are supported.
 
 ## 5. Database Deployment — Neon Free Postgres
 
@@ -134,7 +134,7 @@ flowchart LR
 - Runtime (pooled): `postgresql://user:pass@ep-...-pooler.region.aws.neon.tech/opspulse?sslmode=require`
 - Migrations (direct): `postgresql://user:pass@ep-...-region.aws.neon.tech/opspulse?sslmode=require`
 
-### 5.3 Limits to remember (verified 2026-07-10)
+### 5.3 Limits to remember (verified 2026-07-13)
 
 - 100 projects, 10 branches/project.
 - 100 CU-hours/project/month; autoscale up to 2 CU (~8GB RAM).
@@ -145,11 +145,13 @@ flowchart LR
 
 ### 5.4 Apply Flyway migrations
 
-Render release stage command (runs before each deploy):
-```bash
-./gradlew flywayMigrate -Dflyway.url=$NEON_FLYWAY_URL -Dflyway.user=$NEON_DATABASE_USERNAME -Dflyway.password=$NEON_DATABASE_PASSWORD
-```
-Alternatively, Spring Boot runs Flyway on startup (`spring.flyway.enabled=true`); for first deploy, prefer release stage to fail fast on migration errors.
+Spring Boot runs Flyway on startup when `spring.flyway.enabled=true` (default in
+all profiles). For hosted deploys, migrations apply during container boot; a
+failed migration prevents the service from becoming healthy.
+
+To run migrations manually against Neon before deploy, use the Flyway CLI with
+the direct (non-pooled) connection string, or rely on the application's startup
+migration step.
 
 ### 5.5 Demo data seeding
 
@@ -171,7 +173,7 @@ Alternatively, Spring Boot runs Flyway on startup (`spring.flyway.enabled=true`)
 3. Copy `UPSTASH_REDIS_URL` to Render env.
 4. Spring Boot auto-configures `RedisCacheManager` when `UPSTASH_REDIS_URL` is set.
 
-### 6.3 Limits to remember (verified 2026-07-10)
+### 6.3 Limits to remember (verified 2026-07-13)
 
 - 500,000 commands/month (changed from 10K/day in Mar 2025).
 - 256 MB data, 10 GB bandwidth/month.
@@ -225,10 +227,10 @@ docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e NEON_DATABASE_URL=... 
 
 | Platform | Free plan URL | Last verified | Hard limits (verified) | Status |
 |---|---|---|---|---|
-| Cloudflare Pages | https://developers.cloudflare.com/pages/platform/limits/ | 2026-07-10 | 500 builds/mo, 20K files, 25 MiB file, unlimited bandwidth/sites | Verified |
-| Render Free Web Service | https://render.com/docs/free | 2026-07-10 | 750h/workspace/mo, 15 min idle spin-down, 5 GB egress, no disk/WebSockets | Verified |
-| Neon Free Postgres | https://neon.com/faqs/free-plan-limits-and-quotas | 2026-07-10 | 100 CU-h/project/mo, 0.5 GB storage, 5 GB egress, 5-min scale-to-zero | Verified |
-| Upstash Redis Free | https://upstash.com/pricing/redis | 2026-07-10 | 500K commands/mo, 256 MB data, 10 GB bandwidth, single region | Verified (optional) |
+| Cloudflare Pages | https://developers.cloudflare.com/pages/platform/limits/ | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
+| Render Free Web Service | https://render.com/docs/free | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
+| Neon Free Postgres | https://neon.com/pricing | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification |
+| Upstash Redis Free | https://upstash.com/pricing/redis | 2026-07-13 | Historical baseline only; re-check current limits | Requires manual verification (optional) |
 
 If any row becomes "requires manual verification", follow [ADR-004 alternatives](ADR/ADR-004-slim-free-tier-deployment.md) and update this table.
 
@@ -256,6 +258,19 @@ volumes:
 ```
 
 ## 12. Local Full Stack (`docker-compose.full.yml`, profile `fullstack`)
+
+The repository includes a runnable optional stack with pinned Postgres,
+Redpanda, Prometheus, and Grafana images. Start it with a temporary local JWT
+placeholder:
+
+```powershell
+$env:JWT_SECRET='phase7-local-placeholder-0123456789'
+docker compose -f docker-compose.full.yml up --build
+```
+
+Prometheus scrapes `/actuator/prometheus` through the local-only `fullstack`
+profile, and Grafana provisions the dashboard from `infra/grafana/`. The
+hosted/default profiles keep that endpoint ADMIN-protected.
 
 ```yaml
 services:
@@ -286,7 +301,7 @@ services:
     ports: ["8080:8080"]
 ```
 
-Prometheus scrape config (`infra/prometheus.yml`):
+Prometheus scrape config (`infra/prometheus/prometheus.yml`):
 ```yaml
 scrape_configs:
   - job_name: opspulse
@@ -294,7 +309,9 @@ scrape_configs:
     static_configs: [{ targets: ["backend:8080"] }]
 ```
 
-Grafana dashboards: import JSON for JVM, risk generation count, outbox lag, AI latency (Phase 7 deliverable).
+Grafana dashboard provisioning is included under `infra/grafana/` and covers JVM,
+risk generation, outbox delivery/lag, AI latency, import throughput, and report
+requests.
 
 ## 13. Deploy Pipeline Flow
 
@@ -329,7 +346,7 @@ flowchart TB
 
 ## 15. Security Checklist
 
-- [ ] No secrets in Git (`git-secrets` pre-commit hook).
+- [x] No secrets in the current local diff; hosted secret review remains required.
 - [ ] `JWT_SECRET` is 32+ char random; rotated quarterly.
 - [ ] `AI_API_KEY` only in Render env; never in frontend.
 - [ ] CORS allowlist set to Cloudflare Pages URL only.
@@ -337,15 +354,15 @@ flowchart TB
 - [ ] `/actuator/prometheus` not public (admin token or Render-internal).
 - [ ] Demo credentials documented; no real user data.
 - [ ] Flyway migrations reviewed for destructive DDL.
-- [ ] Dependency scan (Dependabot / OWASP Dependency-Check) in CI.
+- [x] Dependabot, npm audit, CodeQL, and pull-request dependency review are configured in CI.
 
 ## 16. Free-Tier Limitations & Mitigations (summary)
 
 | Limitation | Mitigation |
 |---|---|
-| Render cold start | Keep-alive ping every 12 min |
-| Render 750h cap | Single service; 744h fits |
-| Render no WebSockets | Outbox polling; SSE deferred |
+| Render cold start | Show a waking-up state and retry health/API calls |
+| Render 750h cap | Let the service spin down when idle; deploy only one free backend |
+| Live update complexity | Use outbox polling; SSE/WebSockets deferred |
 | Neon 0.5 GB storage | Cleanup jobs; demo dataset ~100 MB |
 | Neon 5-min idle wake | Frontend loading state; retry on first query |
 | Upstash 500K cmd/mo | Skip Redis unless needed; Caffeine fallback |
