@@ -1,6 +1,6 @@
 # OpsPulse-AI — Deployment Guide
 
-> Status: Draft v0.2
+> Status: Hosted demo verified v1.0
 > Last updated: 2026-09-06 (free-tier limits re-verified against official provider pages)
 > Companion: [ADR-004](ADR/ADR-004-slim-free-tier-deployment.md), [ARCHITECTURE.md](ARCHITECTURE.md), [RISK_REGISTER.md](RISK_REGISTER.md)
 
@@ -45,7 +45,7 @@ flowchart LR
 
 | Var | Value | Notes |
 |---|---|---|
-| `VITE_API_BASE_URL` | `https://<render-service>.onrender.com` | backend origin (the frontend appends `/api` paths itself); verified deployed value: `https://opspulse-ai.onrender.com` |
+| `VITE_API_BASE_URL` | `https://opspulse-ai-7gle.onrender.com` | backend origin; verified in the production Pages bundle |
 | `VITE_DEMO_MODE` | `true` | shows demo banner |
 
 ### 3.3 Deploy steps
@@ -70,11 +70,11 @@ flowchart LR
 |---|---|
 | Type | Web Service |
 | Environment | Docker |
-| Region | closest to Neon region (e.g., `oregon` ↔ Neon AWS us-east-2; verify latency) |
+| Region | `oregon` (verified deployed service); Neon endpoint is in AWS us-west-2 |
 | Spring profile | `prod,hosted-demo` (hosted demo only) |
 | Instance type | Free |
 | Health Check Path | `/actuator/health` |
-| Health Check Grace Period | 60s (cold start tolerance) |
+| Health behavior | `/actuator/health`; observed Java free-tier starts were ~200–267s, so clients must tolerate a long wake/deploy window |
 | Docker Command | (image default: `java -XX:MaxRAMPercentage=75 -XX:+UseSerialGC -jar /app/app.jar`) |
 
 ### 4.2 Environment variables (backend)
@@ -112,24 +112,24 @@ flowchart LR
 3. Choose Docker environment; Render auto-detects `Dockerfile`.
 4. Set env vars above.
 5. Deploy. Render builds image and starts service.
-6. Verify `/actuator/health` returns 200 within 90s.
+6. Verify `/actuator/health` returns 200 after the service finishes its free-tier wake/deploy cycle; observed starts for this workload were ~200–267s.
 7. Run Flyway migrations (see §5.4).
 
-### 4.4 Limits to remember (verified 2026-07-13)
+### 4.4 Verified hosted service (2026-09-06)
 
-- 750 instance-hours/workspace/month; idle spin-down preserves the shared quota.
-- Spins down after 15 min idle; cold start takes about 1 minute.
-- 5 GB outbound bandwidth/month.
-- 500 build minutes/month.
-- No persistent disk, inbound private networking, or SSH. WebSockets are supported.
+- Service: `opspulse-ai` on Render Free, region `oregon`.
+- Public URL: https://opspulse-ai-7gle.onrender.com
+- Health: `https://opspulse-ai-7gle.onrender.com/actuator/health` → HTTP 200 when warm/live.
+- Free services spin down when idle; actual OpsPulse cold/deploy starts were observed at roughly 200–267 seconds.
+- No persistent disk is used; application state lives in Neon.
 
 ## 5. Database Deployment — Neon Free Postgres
 
 ### 5.1 Provision
 
 1. Sign up at https://neon.com (no credit card required).
-2. Create project `opspulse-ai-prod`, choose region closest to Render.
-3. Create `main` branch (default).
+2. Hosted demo uses the dedicated project/resource `opspulse-ai-demo`, provisioned through Vercel Marketplace with Neon `free_v3`.
+3. Use the provider-managed default branch/database and keep credentials only in platform secret stores.
 4. Copy **pooled** connection string (pgbouncer) for runtime; copy direct connection for Flyway migrations.
 
 ### 5.2 Connection strings
@@ -137,14 +137,12 @@ flowchart LR
 - Runtime (pooled): `postgresql://user:pass@ep-...-pooler.region.aws.neon.tech/opspulse?sslmode=require`
 - Migrations (direct): `postgresql://user:pass@ep-...-region.aws.neon.tech/opspulse?sslmode=require`
 
-### 5.3 Limits to remember (verified 2026-07-13)
+### 5.3 Verified hosted database (2026-09-06)
 
-- 100 projects, 10 branches/project.
-- 100 CU-hours/project/month; autoscale up to 2 CU (~8GB RAM).
-- Scale to zero after 5 min idle (mandatory); first query after idle pays ~hundreds of ms.
-- 0.5 GB storage/project (5 GB aggregate across 10 projects).
-- 5 GB egress/project/month.
-- 104 max connections (use pooled string for runtime).
+- Provisioning path: Vercel Marketplace → Neon, plan identifier `free_v3`.
+- Runtime observed PostgreSQL version: **18.6**.
+- Current Flyway version emits a compatibility warning because its latest formally tested PostgreSQL version is 17; despite that warning, V1–V11 validated and migrated successfully, and subsequent boots report schema version 11 with no migration necessary.
+- Do not copy provider credentials into Git or docs. Treat the Vercel/Neon dashboard as the source of truth for current free-tier quotas.
 
 ### 5.4 Apply Flyway migrations
 
@@ -168,7 +166,9 @@ migration step.
   2. seeds a synthetic, credential-free business dataset (10 products, 4 suppliers,
      12 orders, 8 purchase orders, 20 inventory movements) on first boot so the
      deterministic risk engine has genuine stockout, overstock, slow-moving,
-     order-delay, and supplier-reliability signals to detect.
+     order-delay, and supplier-reliability signals to detect;
+  3. runs the real deterministic risk scan when the hosted demo boots; the verified deployment evaluated 21 entities and created 20 risk events;
+  4. creates exactly one system `RULE_BASED` brief when no hosted bootstrap brief exists. With no `AI_API_KEY`, the normal `BriefService` fallback path is exercised and persisted (`fallback=true`).
 - `REGISTRATION_MODE` stays `ADMIN_ONLY` on the hosted deployment.
 
 ## 6. Optional Cache — Upstash Redis Free
@@ -221,10 +221,12 @@ docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e NEON_DATABASE_URL=... 
 
 ## 9. Health Check & Readiness
 
-- `/actuator/health` exposes `livenessState` and `readinessState` (Spring Boot 3).
-- Render health check: `GET /actuator/health` → 200.
-- Cold start grace: 60s (Render) + 30s buffer for Spring Boot boot (~20–25s target).
-- Neon wake: first query after idle ~hundreds of ms; frontend shows loading state.
+- Public backend: https://opspulse-ai-7gle.onrender.com
+- `/actuator/health` returned HTTP 200 after deployment.
+- Flyway validated V1–V11 and schema version 11 before the hosted demo became live.
+- Observed Render free-tier startup for this Spring Boot workload: approximately **200–267 seconds** across verified runs, substantially slower than a generic platform spin-up estimate.
+- Frontend loading/retry behavior is therefore part of the expected free-demo UX.
+- Canonical hosted smoke verifies health, VIEWER login/read paths, reports, persisted `RULE_BASED` brief, and expected 403 responses for VIEWER-only forbidden actions.
 
 ## 10. Platform Validation Checklist
 
@@ -234,7 +236,7 @@ docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod -e NEON_DATABASE_URL=... 
 |---|---|---|---|---|
 | Cloudflare Pages | https://developers.cloudflare.com/pages/platform/limits/ | 2026-09-06 | 500 builds/month, 1 concurrent build, 20,000 files/site, 25 MiB max file, 100 custom domains/project | OK for this project |
 | Render Free Web Service | https://render.com/docs/free | 2026-09-06 | 750 free instance-hours/workspace/month; spin-down after 15 min idle, ~1 min spin-up; shared workspace bandwidth + build-minutes pools; no disk/SSH | OK for this project |
-| Neon Free Postgres | https://neon.com/pricing | 2026-09-06 | ~0.5 GB storage/project; ~100–190 CU-hours/month depending on accounting; scale-to-zero after ~5 min idle; 6-hour point-in-time restore | OK for this project |
+| Vercel-managed Neon Free | provider dashboard / Neon pricing | 2026-09-06 | Deployed as `free_v3`; exact integration quotas are provider-managed and must be read from the current dashboard | OK for this project |
 | Upstash Redis Free | https://upstash.com/pricing/redis | 2026-09-06 | Not used by the hosted demo (Caffeine in-process cache is sufficient); re-verify before enabling | Optional — not required |
 
 If any row becomes "requires manual verification", follow [ADR-004 alternatives](ADR/ADR-004-slim-free-tier-deployment.md) and update this table.
@@ -352,20 +354,20 @@ flowchart TB
 ## 15. Security Checklist
 
 - [x] No secrets in the current local diff; hosted secret review remains required.
-- [ ] `JWT_SECRET` is 32+ char random; rotated quarterly.
-- [ ] `AI_API_KEY` only in Render env; never in frontend.
-- [ ] CORS allowlist set to Cloudflare Pages URL only.
-- [ ] HTTPS enforced by Cloudflare + Render (TLS auto).
-- [ ] `/actuator/prometheus` not public (admin token or Render-internal).
-- [ ] Demo credentials documented; no real user data.
-- [ ] Flyway migrations reviewed for destructive DDL.
+- [x] `JWT_SECRET` is 32+ char random and stored only in Render environment configuration.
+- [x] Hosted demo has no `AI_API_KEY`; deterministic fallback is intentional and no AI secret is exposed.
+- [x] CORS allowlist is set to `https://opspulse-ai.pages.dev`.
+- [x] Cloudflare Pages and Render public origins use HTTPS.
+- [x] `/actuator/prometheus` remains ADMIN-protected in the hosted profile.
+- [x] Public hosted credential is VIEWER-only and all hosted business data is synthetic.
+- [x] Flyway V1–V11 validated and applied successfully on the hosted Neon database.
 - [x] Dependabot, npm audit, CodeQL, and pull-request dependency review are configured in CI.
 
 ## 16. Free-Tier Limitations & Mitigations (summary)
 
 | Limitation | Mitigation |
 |---|---|
-| Render cold start | Show a waking-up state and retry health/API calls |
+| Render cold start (~200–267s observed) | Show a waking-up state and retry health/API calls; accepted for the $0 Java demo |
 | Render 750h cap | Let the service spin down when idle; deploy only one free backend |
 | Live update complexity | Use outbox polling; SSE/WebSockets deferred |
 | Neon 0.5 GB storage | Cleanup jobs; demo dataset ~100 MB |
