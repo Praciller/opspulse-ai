@@ -62,7 +62,7 @@ if ($recommendations.total -lt 1 -or $recommendations.items[0].generatedBy -ne '
 function Assert-SmokeForbidden([string]$Method, [string]$Path, [string]$Body = $null) {
     try {
         $params = @{ Uri = "$base$Path"; Method = $Method; Headers = $authHeaders; UseBasicParsing = $true }
-        if ($null -ne $Body) {
+        if ($Method -notin @('GET', 'HEAD') -and -not [string]::IsNullOrEmpty($Body)) {
             $params.ContentType = 'application/json'
             $params.Body = $Body
         }

@@ -154,12 +154,11 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and pl
 
 ## Demo links
 
-> Placeholder — populated after Phase 7 deploy.
-
-- **Frontend (Cloudflare Pages):** `https://opspulse-ai.pages.dev` _(TBD)_
-- **Backend API (Render):** `https://opspulse-ai.onrender.com` _(TBD)_
-- **Swagger UI:** `https://opspulse-ai.onrender.com/swagger-ui.html` _(TBD)_
-- **Demo credentials:** _(TBD — documented after deploy; demo-only, no real data)_
+- **Live frontend:** https://opspulse-ai.pages.dev
+- **Backend API:** https://opspulse-ai-7gle.onrender.com
+- **Swagger UI:** https://opspulse-ai-7gle.onrender.com/swagger-ui.html
+- **Public demo login:** `viewer@demo.opspulse.local` / `DemoV1-HZCjDhe8i0-S5GVyEWVkix4E`
+- **Access model:** hosted demo credentials are intentionally public and map to a synthetic-data **VIEWER-only** account. Write/admin actions remain forbidden.
 
 ## Quick start (local minimal)
 
@@ -230,28 +229,29 @@ actuator contract.
 
 ## Deployment overview
 
-OpsPulse-AI targets **free-tier-only** services. Availability and limits were verified on 2026-07-13 but require periodic manual verification before deployment because provider pricing can change:
+OpsPulse-AI uses a **free-tier-only hosted demo** verified on 2026-09-06. Provider pricing and quotas can change, so `docs/DEPLOYMENT.md` remains the source of truth for periodic re-validation:
 
 | Layer | Service | Verified limits |
 |---|---|---|
-| Frontend | Cloudflare Pages | Unlimited bandwidth/sites; 500 builds/month |
-| Backend | Render Free Web Service | 750h/workspace/month; sleeps after 15 min idle |
-| Database | Neon Free Postgres | 100 CU-hours/project/month; 0.5 GB storage; scales to zero |
-| Cache (optional) | Upstash Redis Free | 500K commands/month; 256 MB data |
+| Frontend | Cloudflare Pages | Live at `opspulse-ai.pages.dev`; static Vite build |
+| Backend | Render Free Web Service | Live in Oregon; free service sleeps after idle |
+| Database | Vercel-managed Neon Free (`free_v3`) | Dedicated `opspulse-ai-demo`; PostgreSQL 18.6 observed |
+| Cache | In-process Caffeine | Upstash not required for the hosted demo |
 
 Full deploy steps, env vars, and the **platform validation checklist** (must pass before each deploy) live in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Screenshots
+## Hosted screenshots
 
-> Placeholder — populated in Phase 8.
+All screenshots below were captured from the real Cloudflare Pages → Render → Neon hosted stack on 2026-09-06 using the least-privilege VIEWER demo account.
 
-| Page | Screenshot |
-|---|---|
-| Login | _(TBD)_ |
-| Dashboard | _(TBD)_ |
-| Risk events | _(TBD)_ |
-| AI daily brief | _(TBD)_ |
-| CSV import | _(TBD)_ |
+### Operations dashboard
+![OpsPulse hosted dashboard](docs/assets/hosted-demo/dashboard.png)
+
+### Deterministic risk events
+![OpsPulse hosted deterministic risk events](docs/assets/hosted-demo/risk-events.png)
+
+### Rule-based operations brief
+![OpsPulse hosted rule-based AI fallback brief](docs/assets/hosted-demo/ai-brief.png)
 
 ## Sample data
 
@@ -264,13 +264,13 @@ transaction-scoped business fixtures; the local seed remains user-only.
 
 ## API docs
 
-- **Swagger UI (hosted):** `https://opspulse-ai.onrender.com/swagger-ui.html` _(TBD)_
-- **OpenAPI spec (hosted):** `https://opspulse-ai.onrender.com/v3/api-docs` _(TBD)_
+- **Swagger UI (hosted):** `https://opspulse-ai-7gle.onrender.com/swagger-ui.html`
+- **OpenAPI spec (hosted):** `https://opspulse-ai-7gle.onrender.com/v3/api-docs`
 - **API contract plan:** [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
 - **Phase 7 local UAT:** [docs/PHASE7_UAT.md](docs/PHASE7_UAT.md)
 - **Phase 8 hosted handoff:** [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md)
 
-Implemented through Phase 6 on the backend, with the Phase 5/6 console in
+Implemented through the Phase 8 hosted portfolio milestone, with the console in
 `frontend/`: `/api/auth`, `/api/audit-logs`, `/api/products`,
 `/api/suppliers`, `/api/orders`, `/api/purchase-orders`,
 `/api/inventory-movements`, `/api/risks`, `/api/admin/outbox-events`,
@@ -319,8 +319,8 @@ Prometheus locally only; hosted metrics remain protected.
 
 ## Known limitations
 
-- **Render cold starts (about 60s)** after 15 min idle — accepted for the free demo and explained in the loading state.
-- **Neon 0.5 GB storage** — demo dataset ~100 MB; cleanup jobs prune `outbox_events`, `processed_events`, `import_row_errors`.
+- **Render cold starts are slow for this Java workload** — observed hosted starts were roughly 200–267 seconds on the free instance after deploy/idle. The frontend keeps an explicit loading/retry state and the limitation is accepted for the $0 demo.
+- **Neon free-tier quotas are provider-managed** — this deployment uses Vercel-managed Neon `free_v3`; the provider dashboard is the quota source of truth. The hosted dataset is synthetic and intentionally small.
 - **AI brief requires BYOK** — the public hosted demo shows the **rule-based fallback brief** unless the viewer sets `AI_API_KEY` in their own instance.
 - **No PDF export** — reports are JSON-first (out of scope per PRD §6).
 - **Single-tenant for MVP** — schema has `organization_id` placeholder for future multi-tenant.
@@ -379,7 +379,7 @@ gantt
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT.
 
 ## Author
 
