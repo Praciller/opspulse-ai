@@ -27,7 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.apache.commons:commons-csv:1.14.1")
-    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.9"))
+    implementation(platform("org.springframework.ai:spring-ai-bom:2.0.1"))
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.flywaydb:flyway-core")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17")
