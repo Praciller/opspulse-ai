@@ -67,7 +67,7 @@ class ImportApiIntegrationTest extends Phase2ApiIntegrationTestSupport {
                         .string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
                         .string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
-                                org.hamcrest.Matchers.containsString("idempotency-key")));
+                                org.hamcrest.Matchers.containsStringIgnoringCase("idempotency-key")));
     }
 
     @Test
