@@ -1,7 +1,7 @@
 # Phase 8 Portfolio Handoff
 
 > Status: **HISTORICAL portfolio milestone — verified 2026-09-06**
-> For the verified 2026-10-23 Render release and the unresolved current frontend hosting target, see [current release status](CURRENT_RELEASE_STATUS_2026-10-23.md). This 2026-09-06 handoff is archival evidence, not a current deployment instruction.
+> For the verified 2026-10-23 Render release and the Vercel frontend release, see [current release status](CURRENT_RELEASE_STATUS_2026-10-23.md). This 2026-09-06 handoff is archival evidence, not a current deployment instruction.
 
 OpsPulse is public and hosted end-to-end:
 
