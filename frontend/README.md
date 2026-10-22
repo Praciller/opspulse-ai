@@ -40,11 +40,7 @@ Run `npm ci && npm run build` to generate the Vite `dist/` bundle.
 Set `VITE_API_BASE_URL` to the intended backend origin and do not enable
 `VITE_USE_MOCKS` in a deployed environment.
 
-The current hosted frontend destination is **not verified**. The original
-`_redirects` file is retained as historical static-hosting compatibility,
-not proof that any particular hosting provider is in use. See
-[the verified release status](../docs/CURRENT_RELEASE_STATUS_2026-10-23.md)
-before planning a hosted frontend release.
+The current production frontend runs on [Vercel](https://opspulse-ai-gamma.vercel.app), linked to GitHub `Praciller/opspulse-ai` and automatically built from `main`. Vercel project root is `frontend/`, framework Vite, Node.js 24, build command `npm run build` and output `dist`. The committed `vercel.json` provides SPA deep-link rewrites. Preview deployments remain protected by Vercel Authentication; production uses OpsPulse application authentication. The older `_redirects` file is kept only for historical static-host compatibility. See [the current deployment status](../docs/CURRENT_RELEASE_STATUS_2026-10-23.md).
 
 Reports and imports now use the Phase 6 backend contracts. In mock mode they use
 stateful deterministic fixtures; real APIs remain the default. Do not enable
