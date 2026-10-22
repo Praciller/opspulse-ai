@@ -38,7 +38,7 @@ flowchart LR
 | Framework preset | Vite |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
-| Node version | 20 |
+| Node version | 24 (pinned by `frontend/.node-version`) |
 | Install command | `npm ci` |
 
 ### 3.2 Environment variables

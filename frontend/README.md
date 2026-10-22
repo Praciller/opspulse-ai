@@ -2,6 +2,10 @@
 
 This Vite/React application is the Phase 5/6 operations console for OpsPulse AI.
 
+## Node.js requirement
+
+Use Node.js 24 for local development and Cloudflare Pages builds (see `.node-version`). Vite 8 requires Node 20.19+ or 22.12+; this project standardizes on Node 24 to match its GitHub Actions CI. If Cloudflare Pages uses the repository root instead of `frontend/` as its build root, set `NODE_VERSION=24` explicitly in Pages build environment variables.
+
 ## Local development
 
 ```powershell
