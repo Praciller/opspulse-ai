@@ -12,7 +12,8 @@ This document supersedes historical hosting assumptions in [the September deploy
 
 ## Frontend and data status
 
-- React/Vite frontend builds in CI. A new **Vercel Hobby project exists, but is NOT deployed or live**: project `opspulse-ai` (`prj_Sfp03pCv1XJXVGJJeQpfthLddlv5`), with reserved domain `opspulse-ai-gamma.vercel.app`.
+- React/Vite frontend builds in CI. Vercel Hobby project `opspulse-ai` (`prj_Sfp03pCv1XJXVGJJeQpfthLddlv5`) now has a **READY** deployment `dpl_DEf2nEj4jwwxoSW2jMtoZtnPCrrF` from PR #27 SHA `4d4c030cc6c802e52541879ee022bbf80974faf7`. Its domain is `opspulse-ai-gamma.vercel.app`.
+- **Production-target caution:** Despite requesting a Preview, the Vercel deployment API unexpectedly returned `target=production` and assigned the production alias. Cancel was attempted but the deployment was already READY. Vercel Authentication was set to `all` on the project and a public unauthenticated request was observed redirecting to Vercel login. The deployment remains **protected / not approved for public launch**.
 - The Vercel project uses Vite, root `frontend`, Node 24, output `dist`; preview/production environment variables set the Render backend URL and `VITE_USE_MOCKS=false`.
 - **Git integration is not connected**: Vercel GitHub App installation cannot access `Praciller/opspulse-ai`; owner must add this specific repository via GitHub Installed GitHub Apps. Draft [PR #27](https://github.com/Praciller/opspulse-ai/pull/27) contains the Vercel SPA rewrite configuration.
 - **CORS is currently blocking this Vercel origin:** an HTTP OPTIONS preflight from `https://opspulse-ai-gamma.vercel.app` to the live Render login endpoint returned HTTP 403. The previous Cloudflare Pages origin returned HTTP 200 with an `Access-Control-Allow-Origin` header. Review/preserve the existing Render CORS allowlist before adding the new Vercel origin; no live config has been changed. The connected Render workspace has no OpsPulse static-site service.
@@ -22,7 +23,7 @@ This document supersedes historical hosting assumptions in [the September deploy
 
 ## Remaining release tasks
 
-1. Grant the Vercel GitHub App access to `Praciller/opspulse-ai`; connect the existing Vercel project, validate PR #27 SPA routing and a real preview, then verify CORS and release only after approval.
+1. Grant the Vercel GitHub App access to `Praciller/opspulse-ai` (current installation is limited to six other repos), connect the existing Vercel project for auto-deploy, validate the protected deployment and its SPA routing, then verify CORS and publish only after approval.
 2. Run the approved least-privilege VIEWER smoke and record the actual results.
 3. Verify external database ownership and schema read-only.
 4. Treat durable CSV imports and AI metric grounding as separate future engineering work.
