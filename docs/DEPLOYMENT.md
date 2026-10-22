@@ -46,7 +46,7 @@ flowchart LR
 | Var | Value | Notes |
 |---|---|---|
 | `VITE_API_BASE_URL` | `https://opspulse-ai-7gle.onrender.com` | backend origin; verified in the production Pages bundle |
-| `VITE_DEMO_MODE` | `true` | shows demo banner |
+| `VITE_USE_MOCKS` | `false` | Keep real backend APIs enabled in production |
 
 ### 3.3 Deploy steps
 
@@ -92,11 +92,8 @@ flowchart LR
 | `BCRYPT_STRENGTH` | no | `12` | BCrypt work factor; do not lower in production |
 | `REGISTRATION_MODE` | no | `ADMIN_ONLY` | `ADMIN_ONLY` or explicit self-hosted `PUBLIC_VIEWER` |
 | `AI_API_KEY` | no | – | BYOK; absent → rule-based brief |
-| `AI_PROVIDER` | no | `openai` | openai/anthropic/ollama |
 | `AI_MODEL` | no | `gpt-4o-mini` | |
 | `AI_BASE_URL` | no | – | override for OpenAI-compatible |
-| `AI_TIMEOUT_SECONDS` | no | `15` | |
-| `UPSTASH_REDIS_URL` | no | – | optional; absent → Caffeine in-memory cache |
 | `CORS_ALLOWED_ORIGINS` | yes | `https://<project>.pages.dev` | allowlist |
 | `ALLOW_NEGATIVE_STOCK` | no | `false` | admin config |
 | `HOSTED_DEMO_VIEWER_EMAIL` | with `hosted-demo` profile | – | email for the single least-privilege demo account |
@@ -171,7 +168,9 @@ migration step.
   4. creates exactly one system `RULE_BASED` brief when no hosted bootstrap brief exists. With no `AI_API_KEY`, the normal `BriefService` fallback path is exercised and persisted (`fallback=true`).
 - `REGISTRATION_MODE` stays `ADMIN_ONLY` on the hosted deployment.
 
-## 6. Optional Cache — Upstash Redis Free
+## 6. Optional Cache — Upstash Redis Free (future integration)
+
+> The current application has no Redis or Caffeine caching adapter. The steps below are an architecture option only, not a currently supported runtime configuration.
 
 ### 6.1 When to use
 
@@ -184,7 +183,7 @@ migration step.
 1. Sign up at https://upstash.com (no credit card).
 2. Create Redis DB, single region, TLS endpoint.
 3. Copy `UPSTASH_REDIS_URL` to Render env.
-4. Spring Boot auto-configures `RedisCacheManager` when `UPSTASH_REDIS_URL` is set.
+4. Implement and test a Redis cache adapter before configuring the application. Setting `UPSTASH_REDIS_URL` alone currently does not enable caching.
 
 ### 6.3 Limits to remember (verified 2026-07-13)
 
