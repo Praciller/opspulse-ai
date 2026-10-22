@@ -182,7 +182,7 @@ migration step.
 
 1. Sign up at https://upstash.com (no credit card).
 2. Create Redis DB, single region, TLS endpoint.
-3. Copy `UPSTASH_REDIS_URL` to Render env.
+3. In a future caching implementation, configure the adapter and inject its verified credentials via platform secrets; no Redis variable is needed for the current deployment.
 4. Implement and test a Redis cache adapter before configuring the application. Setting `UPSTASH_REDIS_URL` alone currently does not enable caching.
 
 ### 6.3 Limits to remember (verified 2026-07-13)
