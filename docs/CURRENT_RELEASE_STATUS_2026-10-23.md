@@ -26,7 +26,7 @@ Build-time configuration for both preview and production:
 - Prior to that merge, an authenticated browser smoke against the same frontend code on the Vercel production alias passed: login with least-privilege synthetic VIEWER, navigation to `/dashboard`, and zero browser JavaScript errors. Re-check after changes.
 - Render backend health returned HTTP 200; its 2026-10-22 startup took approximately 217–235 seconds on the free instance. Cold starts can exceed typical client timeouts.
 - The Render CORS configuration was updated with `replace=false` to allow the production Vercel origin while temporarily preserving the September legacy origin, and the deployed backend returned HTTP 200 to the Vercel login OPTIONS preflight with matching `Access-Control-Allow-Origin`. Render automatically deploys every `main` commit, including frontend-only/docs-only commits.
-- The Render deployment triggered by the PR #27 merge should be independently checked for `live` status and `/actuator/health` before calling the entire new release fully verified. No database migration was part of PR #27.
+- The Render auto-deployment for PR #27 merged SHA `06b60f5` completed as `live` (`dep-dbd6k20473hc73aen230`). A post-merge check confirmed Vercel `/`, `/login`, and `/dashboard` HTTP 200; Render `/actuator/health` HTTP 200; and Vercel-origin login OPTIONS HTTP 200 with a matching `Access-Control-Allow-Origin`. No database migration was part of PR #27.
 
 ## Release checklist
 
