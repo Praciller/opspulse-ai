@@ -29,7 +29,7 @@ Scope: isolated branch clone `codex/opspulse-hardening-20261022` on the authoriz
 - [ ] Production VIEWER-mode smoke after separately authorized deployment (out of scope)
 - [ ] Real-user manual review of live Pages/Render deployment (out of scope)
 
-Screenshots were captured locally under the isolated temporary clone during QA, **not** committed as misleading hosted/production evidence. Reproduce the checks with `VITE_USE_MOCKS=true` in Playwright and the tests under `frontend/e2e/`.
+Screenshots were captured locally under the isolated temporary clone during QA. Three representative **mock-mode** screenshots are committed below and must not be presented as hosted/production evidence. Reproduce the checks with `VITE_USE_MOCKS=true` in Playwright and the tests under `frontend/e2e/`.
 ## Selected screenshots (mock data, not hosted production)
 
 **Mobile reports, 390 px:** keyboard focusable scrollable data table.
