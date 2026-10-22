@@ -57,9 +57,15 @@ class ImportApiIntegrationTest extends Phase2ApiIntegrationTestSupport {
 
     @Test
     void browserPreflightAllowsImportIdempotencyHeader() throws Exception {
-        // MockMvc defaults to http://localhost; use HTTPS to model a distinct API origin.
+        // MockMvc defaults to http://localhost. Changing secure alone does not
+        // change the request scheme, so set the scheme explicitly for a true preflight.
         mockMvc.perform(options("/api/imports")
-                        .secure(true)
+                        .with(request -> {
+                            request.setScheme("https");
+                            request.setServerPort(443);
+                            request.setSecure(true);
+                            return request;
+                        })
                         .header(HttpHeaders.ORIGIN, "http://localhost")
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
