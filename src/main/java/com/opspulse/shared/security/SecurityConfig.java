@@ -92,7 +92,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(properties.allowedOrigins());
+        configuration.setAllowedOrigins(properties.allAllowedOrigins());
         configuration.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
