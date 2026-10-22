@@ -136,7 +136,7 @@ flowchart LR
 | Backend | Java 21, Spring Boot 3.x, Spring Web MVC, Spring Security + JWT, Spring Data JPA, Flyway, Spring Scheduler, Spring Boot Actuator, springdoc-openapi |
 | AI | Spring AI OpenAI-compatible chat adapter, BYOK env-var key, rule-based fallback |
 | Database | PostgreSQL (Neon Free), Flyway migrations, JSONB for `source_metrics` and outbox `payload` |
-| Cache | Caffeine (default) or Upstash Redis (optional) |
+| Cache | No cache integration currently; PostgreSQL is the source of truth |
 | Tests | JUnit 5, Mockito, Testcontainers, JaCoCo |
 | Observability | Actuator + Micrometer + Prometheus + Grafana (local full stack) |
 | Frontend | React + Vite + TypeScript + Tailwind (or clean CSS) |
