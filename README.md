@@ -46,7 +46,7 @@ This project is also a **portfolio artifact** demonstrating end-to-end engineeri
 
 - **Phases 0–6 — foundation through imports/reports:** implemented and verified (145 backend tests with Testcontainers, architecture tests, frontend lint/unit/build, Playwright + axe coverage). Source is public on GitHub with CI enforcing build, tests, Docker image size, npm audit, and dependency review.
 - **Phase 7 — hosted hardening:** CI, JaCoCo coverage, security checks, optional full-stack observability profile, jlink slim image (108 MB, gated at 250 MB in CI), and smoke tooling are implemented and verified.
-- **Phase 8 — portfolio completion:** documentation and handoff are published; the hosted slim demo (Render + Neon + Cloudflare Pages) is the remaining external step, tracked in [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md).
+- **Phase 8 — portfolio completion:** the hosted slim demo and portfolio handoff were verified on 2026-09-06. See [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md) for historical evidence; current service availability must be checked separately.
 
 Phase 2 adds bounded product, supplier, customer-order, purchase-order, and
 inventory-movement APIs. Stock is changed only through immutable movement rows.
@@ -63,12 +63,18 @@ later administration UI exists.
 - **Products, Suppliers, Orders, Purchase Orders, Inventory Movements** — full CRUD with audit log.
 - **Transactional inventory** — stock updates, immutable movements, audit, and outbox event in one transaction.
 - **Deterministic risk engine** — 6 risk types (`STOCKOUT_RISK`, `OVERSTOCK_RISK`, `SLOW_MOVING_INVENTORY`, `ORDER_DELAY_RISK`, `SUPPLIER_DELAY_RISK`, `LOW_MARGIN_RISK`), pluggable rules, scheduled scan, active-event deduplication, and system resolution.
-- **AI daily operations brief** — provider-agnostic BYOK (OpenAI, Anthropic, Ollama), prompt versioning, audit trail, **rule-based fallback** when AI is unavailable or hallucinates.
+- **AI daily operations brief** — OpenAI-compatible BYOK chat adapter, prompt versioning, audit trail, **rule-based fallback** when AI is unavailable or returns invalid risk references. Native Anthropic/Ollama integrations are not implemented.
 - **Dashboard** — total products, open orders, delayed orders, high-risk products, open risks, supplier reliability ranking, top stockout risks, slow-moving list, recent movements, recent risks, latest brief.
 - **Reports** — Daily Ops Brief, Inventory Risk, Supplier SLA, Order Delay, Product Margin (JSON-first).
 - **CSV import** — idempotent, row-level errors, file-hash dedup, job status tracking.
 - **Audit log** — every sensitive action logged with actor, before/after snapshot, request ID.
 - **PostgreSQL outbox** — CloudEvents 1.0 envelope, scheduler poller, idempotent processed-event tracking, retry/dead-letter handling, and future Kafka migration without contract change.
+
+## Reliability and security follow-up
+
+The current hosted demo is a **single-instance portfolio environment** using synthetic data. CSV uploads are queued with in-process bytes; after a restart, interrupted `PENDING`/`PROCESSING` jobs are marked `FAILED`, **not automatically resumed**. Some rows may already have been written. Do not use this import workflow for critical production data without durable payload storage, reliable recovery, and explicit partial-import handling.
+
+See [the 2026-10-22 hardening review](docs/HARDENING_REVIEW_2026-10-22.md) for remaining security and GitHub administration actions.
 
 ## Architecture at a glance
 
@@ -93,7 +99,7 @@ flowchart TB
         Upstash[(Upstash Redis - optional)]
     end
     subgraph ExtAI[External AI - BYOK]
-        Provider[OpenAI / Anthropic / Ollama]
+        Provider[OpenAI-compatible chat API]
     end
     React -->|HTTPS + JWT| API
     API --> Sec --> UC --> Dom
@@ -128,7 +134,7 @@ flowchart LR
 | Layer | Technology |
 |---|---|
 | Backend | Java 21, Spring Boot 3.x, Spring Web MVC, Spring Security + JWT, Spring Data JPA, Flyway, Spring Scheduler, Spring Boot Actuator, springdoc-openapi |
-| AI | Spring AI 1.0 (provider-agnostic), BYOK env-var key, rule-based fallback |
+| AI | Spring AI OpenAI-compatible chat adapter, BYOK env-var key, rule-based fallback |
 | Database | PostgreSQL (Neon Free), Flyway migrations, JSONB for `source_metrics` and outbox `payload` |
 | Cache | Caffeine (default) or Upstash Redis (optional) |
 | Tests | JUnit 5, Mockito, Testcontainers, JaCoCo |
@@ -236,7 +242,7 @@ OpsPulse-AI uses a **free-tier-only hosted demo** verified on 2026-09-06. Provid
 | Frontend | Cloudflare Pages | Live at `opspulse-ai.pages.dev`; static Vite build |
 | Backend | Render Free Web Service | Live in Oregon; free service sleeps after idle |
 | Database | Vercel-managed Neon Free (`free_v3`) | Dedicated `opspulse-ai-demo`; PostgreSQL 18.6 observed |
-| Cache | In-process Caffeine | Upstash not required for the hosted demo |
+| Cache | No dedicated cache adapter | Upstash/Redis caching is not implemented in the current backend |
 
 Full deploy steps, env vars, and the **platform validation checklist** (must pass before each deploy) live in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
