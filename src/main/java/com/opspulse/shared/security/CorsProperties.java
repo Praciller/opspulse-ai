@@ -3,10 +3,12 @@ package com.opspulse.shared.security;
 import java.util.List;
 import java.util.stream.Stream;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 @ConfigurationProperties(prefix = "opspulse.cors")
 public record CorsProperties(List<String> allowedOrigins, List<String> extraAllowedOrigins) {
 
+    @ConstructorBinding
     public CorsProperties {
         allowedOrigins = normalize(allowedOrigins);
         extraAllowedOrigins = normalize(extraAllowedOrigins);
