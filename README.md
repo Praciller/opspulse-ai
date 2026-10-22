@@ -1,5 +1,7 @@
 # OpsPulse-AI
 
+> **Current hosting (2026-10-23):** Frontend [Vercel](https://opspulse-ai-gamma.vercel.app) + backend [Render](https://opspulse-ai-7gle.onrender.com) + Neon PostgreSQL. Cloudflare Pages references describing September 2026 are archival, not active hosting guidance. See [current deployment status](docs/CURRENT_RELEASE_STATUS_2026-10-23.md).
+
 > **Java/Spring Boot operations intelligence platform for SMEs** — detect stockout, overstock, order delay, and supplier reliability risks, then generate an AI-assisted daily action plan that reduces manual Excel triage.
 
 [![CI](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
@@ -12,8 +14,8 @@ The local `frontend/` application is implemented with React, TypeScript,
 Vite, and Tailwind. Real backend APIs are the default; deterministic fixtures
 are opt-in with `VITE_USE_MOCKS=true`. It includes protected role-aware routes,
 inventory and purchasing views, risk lifecycle actions, AI brief generation and
-feedback, import upload/status/error workflows, five JSON reports, Cloudflare
-Pages SPA routing, unit/component tests, Playwright mock flow, and axe
+feedback, import upload/status/error workflows, five JSON reports, Vercel
+SPA routing, unit/component tests, Playwright mock flow, and axe
 accessibility coverage.
 See [`frontend/README.md`](frontend/README.md) for setup and the optional
 real-API smoke variables.
@@ -80,7 +82,7 @@ See [the 2026-10-22 hardening review](docs/HARDENING_REVIEW_2026-10-22.md) for r
 
 ```mermaid
 flowchart TB
-    subgraph Frontend[Frontend - Cloudflare Pages]
+    subgraph Frontend[Frontend - Vercel]
         React[React + Vite + TS]
     end
     subgraph Backend[Backend - Render Free - Spring Boot 3 / Java 21]
@@ -117,7 +119,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     User[Operations Manager]
-    Web[OpsPulse Web UI - React on Cloudflare Pages]
+    Web[OpsPulse Web UI - React on Vercel]
     API[OpsPulse API - Spring Boot on Render]
     DB[(Neon Postgres)]
     Cache[(Upstash Redis - optional)]
@@ -140,14 +142,14 @@ flowchart LR
 | Tests | JUnit 5, Mockito, Testcontainers, JaCoCo |
 | Observability | Actuator + Micrometer + Prometheus + Grafana (local full stack) |
 | Frontend | React + Vite + TypeScript + Tailwind (or clean CSS) |
-| Deployment | Docker (multi-stage JRE 21 slim), Cloudflare Pages, Render Free, Neon Free |
+| Deployment | Docker (multi-stage JRE 21 slim), Vercel, Render Free, Neon Free |
 | Events | PostgreSQL outbox + CloudEvents 1.0 envelope; optional Kafka/Redpanda in local full stack |
 
 ## Target Hosted Slim vs Local Full Stack
 
 | Aspect | Hosted Slim (free demo) | Local Full Stack (dev/observability) |
 |---|---|---|
-| Frontend | Cloudflare Pages | Vite dev server |
+| Frontend | Vercel | Vite dev server |
 | Backend | Render Free Web Service (Docker) | Spring Boot in Docker Compose |
 | Database | Neon Free Postgres | PostgreSQL in Docker Compose |
 | Cache | Caffeine (or optional Upstash Redis) | Redis in Docker Compose |
@@ -160,7 +162,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and pl
 
 ## Demo links
 
-- **Live frontend:** https://opspulse-ai.pages.dev
+- **Live frontend:** https://opspulse-ai-gamma.vercel.app
 - **Backend API:** https://opspulse-ai-7gle.onrender.com
 - **Swagger UI:** https://opspulse-ai-7gle.onrender.com/swagger-ui.html
 - **Public demo login:** `viewer@demo.opspulse.local` / `DemoV1-HZCjDhe8i0-S5GVyEWVkix4E`
@@ -235,11 +237,11 @@ actuator contract.
 
 ## Deployment overview
 
-OpsPulse-AI uses a **free-tier-only hosted demo** verified on 2026-09-06. Provider pricing and quotas can change, so `docs/DEPLOYMENT.md` remains the source of truth for periodic re-validation:
+OpsPulse-AI was first verified as a hosted demo on 2026-09-06. As of 2026-10-23 the active frontend is on Vercel, with Render and Neon retained. The historical [deployment guide](docs/DEPLOYMENT.md) preserves the September evidence; use the [current deployment status](docs/CURRENT_RELEASE_STATUS_2026-10-23.md) for the live topology and re-validate provider pricing independently:
 
 | Layer | Service | Verified limits |
 |---|---|---|
-| Frontend | Cloudflare Pages | Live at `opspulse-ai.pages.dev`; static Vite build |
+| Frontend | Vercel Hobby | Live at `opspulse-ai-gamma.vercel.app`; static Vite build |
 | Backend | Render Free Web Service | Live in Oregon; free service sleeps after idle |
 | Database | Vercel-managed Neon Free (`free_v3`) | Dedicated `opspulse-ai-demo`; PostgreSQL 18.6 observed |
 | Cache | No dedicated cache adapter | Upstash/Redis caching is not implemented in the current backend |
@@ -378,7 +380,7 @@ gantt
 | [docs/API_CONTRACT.md](docs/API_CONTRACT.md) | Endpoint inventory, RBAC matrix, examples, error envelope, OpenAPI |
 | [docs/ADR/](docs/ADR/) | 7 Architecture Decision Records (Spring Boot, Outbox, BYOK, Free-tier, Risk-first, CloudEvents, Spring AI) |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 8-phase implementation plan with exit criteria |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Cloudflare + Render + Neon + Upstash; env vars; platform validation checklist |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Historical September deployment evidence and verification checklist; see current release status for Vercel |
 | [docs/RISK_REGISTER.md](docs/RISK_REGISTER.md) | 15 technical & product risks with mitigations and review cadence |
 | [docs/GITHUB_ISSUES.md](docs/GITHUB_ISSUES.md) | ~55 suggested issues with labels, milestones, acceptance criteria |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Local prerequisites, verification commands, and project contribution rules |
