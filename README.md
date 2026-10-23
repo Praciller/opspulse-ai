@@ -158,7 +158,7 @@ flowchart LR
 | Cost | $0/month (verified 2026-07-13) | Local machine only |
 | Compose file | `docker-compose.yml` (profile `local`) | `docker-compose.full.yml` (profile `fullstack`) |
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and platform validation.
+For the **current Vercel + Render hosting topology and release checks**, read [docs/CURRENT_RELEASE_STATUS_2026-10-23.md](docs/CURRENT_RELEASE_STATUS_2026-10-23.md). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) is preserved as the **historical September 2026** runbook, not the current deployment procedure.
 
 ## Demo links
 
@@ -246,7 +246,7 @@ OpsPulse-AI was first verified as a hosted demo on 2026-09-06. As of 2026-10-23 
 | Database | Vercel-managed Neon Free (`free_v3`) | Dedicated `opspulse-ai-demo`; PostgreSQL 18.6 observed |
 | Cache | No dedicated cache adapter | Upstash/Redis caching is not implemented in the current backend |
 
-Full deploy steps, env vars, and the **platform validation checklist** (must pass before each deploy) live in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Review the [current release checklist](docs/CURRENT_RELEASE_STATUS_2026-10-23.md#release-checklist) for Vercel + Render. The [September deployment instructions](docs/DEPLOYMENT.md) remain available only for historical context.
 
 ## Hosted screenshots
 
@@ -327,7 +327,7 @@ Prometheus locally only; hosted metrics remain protected.
 
 ## Known limitations
 
-- **Render cold starts are slow for this Java workload** — observed hosted starts were roughly 200–267 seconds on the free instance after deploy/idle. The frontend keeps an explicit loading/retry state and the limitation is accepted for the $0 demo.
+- **Render cold starts are slow for this Java workload** — the hosted demo has shown starts around 165–267 seconds after deploy/idle, including a measured 165-second health request on 2026-10-23 (then 0.48 seconds when warm). The frontend keeps an explicit loading/retry state; this limitation is accepted for the free-tier demo.
 - **Neon free-tier quotas are provider-managed** — this deployment uses Vercel-managed Neon `free_v3`; the provider dashboard is the quota source of truth. The hosted dataset is synthetic and intentionally small.
 - **AI brief requires BYOK** — the public hosted demo shows the **rule-based fallback brief** unless the viewer sets `AI_API_KEY` in their own instance.
 - **No PDF export** — reports are JSON-first (out of scope per PRD §6).
