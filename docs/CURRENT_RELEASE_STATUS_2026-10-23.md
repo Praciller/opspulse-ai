@@ -41,7 +41,9 @@ Build-time configuration for both preview and production:
 ## Open engineering follow-ups
 
 - The backend is redeployed even for frontend-only and docs-only GitHub commits; split deployment triggers or use an explicit Render build filter when safe.
-- Free-tier Render cold starts remain slow; maintain visible frontend loading/retry states.
+- Free-tier Render cold starts remain slow: a 2026-10-23 long-running health request completed with HTTP 200 after **165.39 s**, whereas a subsequent warm health call returned HTTP 200 in **0.48 s**. Maintain visible frontend loading/retry states and avoid mistaking a short timeout for a persistent outage.
 - Flyway has logged a warning for PostgreSQL 18.6 because the bundled version advertises support up to PostgreSQL 17; track upstream compatibility before database upgrades.
-- [PR #28](https://github.com/Praciller/opspulse-ai/pull/28) proposes an additive CORS configuration mechanism; review separately. The running Vercel production origin already works with the current Render allowlist, so it is not a prerequisite for launch.
+- [PR #28](https://github.com/Praciller/opspulse-ai/pull/28) was **closed without merging**: live OPTIONS tests allow `https://opspulse-ai-gamma.vercel.app` with HTTP 200 and reject unauthorized origins with HTTP 403. The proposed additive CORS code is not required.
+- A read-only Vercel Integration view confirms a Neon-managed resource named `opspulse-ai-demo` exists, while Render startup logs confirm PostgreSQL **18.6**, successful validation of **11 migrations**, and schema `public` at version **11**. The exact direct ownership/linkage between this Neon resource and Render's active database remains **unverified**; do not expose connection strings to establish it.
+- [Documentation PR #26](https://github.com/Praciller/opspulse-ai/pull/26) passed **7/7 GitHub checks** but remains a **Draft** with a Vercel Git status `Deployment rate limited — retry in 24 hours` (reported 2026-10-22 20:06:55 UTC). Do not force a paid deployment or merge just to clear a provider status. Merging docs to `main` would also trigger the existing Render auto-deploy.
 - Historical Cloudflare-specific instructions in [DEPLOYMENT.md](DEPLOYMENT.md) are archival, **not** a current runbook.
