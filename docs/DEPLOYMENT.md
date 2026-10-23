@@ -1,4 +1,6 @@
-# OpsPulse-AI — Deployment Guide
+# OpsPulse-AI — Historical Deployment Guide (September 2026)
+
+> **ARCHIVED HOSTING PLAN:** This document preserves the September 2026 Cloudflare Pages + Render + Neon runbook for historical evidence. Do **not** use its Cloudflare steps for current releases. The active frontend is now on [Vercel](https://opspulse-ai-gamma.vercel.app), the backend remains on Render, and GitHub-connected Vercel auto-deploys from `main`. For verified current settings, CORS, routing, smoke tests, and release steps, use [Current Deployment Status (2026-10-23)](CURRENT_RELEASE_STATUS_2026-10-23.md).
 
 > Status: Hosted demo verified v1.0
 > Last updated: 2026-09-06 (free-tier limits re-verified against official provider pages)
