@@ -9,7 +9,8 @@ const renderRoutes = (initial: string) => render(
     <MemoryRouter initialEntries={[initial]}>
       <Routes>
         <Route path="/login" element={<p>Login screen</p>} />
-        <Route path="/" element={<p>Dashboard screen</p>} />
+        <Route path="/demo" element={<p>Guest demo screen</p>} />
+        <Route element={<ProtectedRoute />}><Route index element={<p>Dashboard screen</p>} /></Route>
         <Route element={<ProtectedRoute roles={['ADMIN']} />}>
           <Route path="/admin" element={<p>Admin action</p>} />
         </Route>
@@ -31,5 +32,17 @@ describe('ProtectedRoute', () => {
     renderRoutes('/admin')
     expect(screen.getByText('Dashboard screen')).toBeInTheDocument()
   })
+  it('sends anonymous first-time visitors to the public guest demo', () => {
+    renderRoutes('/')
+    expect(screen.getByText('Guest demo screen')).toBeInTheDocument()
+    expect(screen.queryByText('Dashboard screen')).not.toBeInTheDocument()
+  })
+
+  it('keeps the real dashboard for already signed-in users', () => {
+    sessionStorage.setItem('opspulse.user', JSON.stringify({ id: 'u2', email: 'viewer@example.test', fullName: 'Viewer', active: true, roles: ['VIEWER'], createdAt: 'now' }))
+    renderRoutes('/')
+    expect(screen.getByText('Dashboard screen')).toBeInTheDocument()
+  })
+
 })
 
