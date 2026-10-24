@@ -4,7 +4,8 @@ import { expect, test } from '@playwright/test'
 test('HR can explore the guest demo immediately without a login or backend traffic', async ({ page }) => {
   const backendCalls: string[] = []
   page.on('request', request => {
-    if (request.url().includes('opspulse-ai-7gle.onrender.com') || request.url().includes('/api/')) backendCalls.push(request.url())
+    const destination = new URL(request.url())
+    if (destination.hostname === 'opspulse-ai-7gle.onrender.com' || /^\/api(?:\/|$)/.test(destination.pathname)) backendCalls.push(request.url())
   })
 
   await page.goto('/')
