@@ -120,16 +120,18 @@ export function GuestDemoPage() {
     <a href="#demo-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-800 focus:p-3 focus:text-white">Skip to demo content</a>
     <header className="border-b border-slate-800/80"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 lg:px-10"><Link to="/demo" className="text-xl font-bold tracking-tight">Ops<span className="text-accent">Pulse</span><span className="ml-2 text-sm font-normal text-slate-400">AI</span></Link><div className="flex items-center gap-4"><span className="hidden text-xs font-semibold uppercase tracking-widest text-accent sm:inline">Guest · Read only</span><Link to="/login" className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:border-slate-500 hover:text-white">Sign in to live console</Link></div></div></header>
     <div className="mx-auto max-w-7xl px-5 pb-16 pt-9 lg:px-10">
+      <main>
       <div className="max-w-4xl"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Interactive portfolio · No account needed</p><h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">Make operational decisions easier to see.</h1><p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">Explore how inventory, purchasing, supplier metrics and risk rules come together in one operations console. Built as a full-stack AI and data engineering portfolio project.</p><div className="mt-6 flex flex-wrap gap-3"><Link to="/demo/risks" className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-teal-300">Explore priority risks</Link><Link to="/demo/reports" className="rounded-lg border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-slate-500">Explore reports</Link></div></div>
       <aside className="my-8 rounded-xl border border-sky-800/50 bg-sky-900/10 px-5 py-4 text-sm leading-6 text-sky-100" aria-label="Demo data disclosure"><strong>Synthetic data · Public guest demo.</strong> All names, orders, metrics and recommendations on these screens are fictional. This guest experience runs entirely in your browser: no account, API requests, database access or write permissions.</aside>
       <nav aria-label="Guest demo navigation" className="mb-8 flex flex-wrap gap-2 border-b border-slate-800 pb-4">{navigation.map(item => <NavLink key={item.href} to={item.href} end className={({isActive}) => `rounded-lg px-4 py-2 text-sm font-medium transition ${isActive ? 'bg-slate-800 text-accent' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}>{item.label}</NavLink>)}</nav>
-      <main id="demo-content" tabIndex={-1} className="outline-none">
+      <section id="demo-content" tabIndex={-1} className="outline-none">
         {section === '/demo' && <DemoOverview />}
         {section === '/demo/products' && <DemoProducts />}
         {section === '/demo/risks' && <DemoRisks />}
         {section === '/demo/reports' && <DemoReports />}
         {section === '/demo/brief' && <DemoBrief />}
         {section === '/demo/unknown' && <Card><h2 className="text-xl font-semibold text-white">Demo page not found</h2><Link to="/demo" className="mt-3 inline-block text-accent hover:underline">Return to overview</Link></Card>}
+      </section>
       </main>
       <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-slate-800 pt-6 text-sm text-slate-400"><p>Guest mode is a read-only illustration — not a production account or live dashboard.</p><a href="https://github.com/Praciller/opspulse-ai" target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">Explore the source on GitHub</a></footer>
     </div>
