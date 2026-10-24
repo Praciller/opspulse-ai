@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/api'
 import { useAuth } from '../auth/useAuth'
-import { Button, Card, Deferred, Notice, PageHeader, Pagination, StatusPill } from '../components/Ui'
+import { Button, Card, ColdStartNotice, Deferred, Notice, PageHeader, Pagination, StatusPill } from '../components/Ui'
 import type { DailyOpsBriefReport, ImportJob, ImportRowError, InventoryRiskReport, OrderDelayReport, Paged, ProductMarginReport, SupplierSlaReport } from '../types'
 
 export function ReportsPage() {
@@ -9,6 +9,7 @@ export function ReportsPage() {
   const [data, setData] = useState<{ daily?: DailyOpsBriefReport; inventory?: InventoryRiskReport; supplier?: SupplierSlaReport; order?: OrderDelayReport; margin?: ProductMarginReport }>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [retryVersion, setRetryVersion] = useState(0)
   useEffect(() => {
     let mounted = true
     setLoading(true); setError('')
@@ -17,7 +18,7 @@ export function ReportsPage() {
       .catch(exception => { if (mounted) setError(exception instanceof Error ? exception.message : 'Unable to load reports') })
       .finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
-  }, [])
+  }, [retryVersion])
   const body = useMemo(() => {
     if (report === 'daily') return <Card><h2 className="font-semibold text-white">Daily operations brief</h2><p className="mt-3 text-sm text-slate-300">{data.daily?.summary ?? 'No brief has been generated yet.'}</p>{data.daily?.generatedBy && <StatusPill value={data.daily.generatedBy} />}</Card>
     if (report === 'supplier') return <Card><h2 className="font-semibold text-white">Supplier SLA</h2><div role="region" aria-label="Supplier SLA table" tabIndex={0} className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><table className="data-table"><caption className="sr-only">Supplier SLA report</caption><thead><tr><th>Supplier</th><th>Received</th><th>Late</th><th>Late rate</th><th>Avg lead</th></tr></thead><tbody>{(data.supplier?.suppliers ?? []).map(item => <tr key={item.supplierId}><td>{item.name}</td><td>{item.receivedCount}</td><td>{item.lateCount}</td><td>{item.lateRatePct}%</td><td>{item.averageLeadTimeDays}d</td></tr>)}</tbody></table></div></Card>
@@ -25,7 +26,7 @@ export function ReportsPage() {
     if (report === 'margin') return <Card><div className="flex items-center justify-between"><h2 className="font-semibold text-white">Product margin</h2><span className="text-sm text-slate-400">At risk: {data.margin?.lowMarginCount ?? 0}</span></div><div role="region" aria-label="Product margin table" tabIndex={0} className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><table className="data-table"><caption className="sr-only">Product margin report</caption><thead><tr><th>SKU</th><th>Product</th><th>Margin</th><th>Margin %</th><th>Risk</th></tr></thead><tbody>{(data.margin?.products ?? []).map(item => <tr key={item.productId}><td>{item.sku}</td><td>{item.name}</td><td>{item.marginAmount.toFixed(2)}</td><td>{item.marginPct?.toFixed(2) ?? '—'}</td><td><StatusPill value={item.riskLevel} /></td></tr>)}</tbody></table></div></Card>
     return <Card><div className="flex items-center justify-between"><h2 className="font-semibold text-white">Inventory risk</h2><span className="text-sm text-slate-400">As of {data.inventory?.asOf ? new Date(data.inventory.asOf).toLocaleString() : '—'}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{Object.entries(data.inventory?.bySeverity ?? {}).map(([key, value]) => <div key={key} className="rounded-xl border border-slate-800 p-3"><StatusPill value={key} /><p className="mt-2 text-2xl font-semibold text-white">{value}</p></div>)}</div><div role="region" aria-label="Top inventory risks table" tabIndex={0} className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"><table className="data-table"><caption className="sr-only">Top inventory risks</caption><thead><tr><th>Type</th><th>Severity</th><th>Entity</th><th>Explanation</th></tr></thead><tbody>{(data.inventory?.topRisks ?? []).map(item => <tr key={item.id}><td>{item.riskType}</td><td><StatusPill value={item.severity} /></td><td>{item.entityType}</td><td>{item.explanation}</td></tr>)}</tbody></table></div></Card>
   }, [data, report])
-  return <><PageHeader eyebrow="Analysis" title="Reports" description="Deterministic JSON-first operational aggregates." /><div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Reports">{[['inventory', 'Inventory risk'], ['supplier', 'Supplier SLA'], ['order', 'Order delay'], ['margin', 'Product margin'], ['daily', 'Daily brief']].map(([value, label]) => <Button key={value} variant={report === value ? 'primary' : 'secondary'} onClick={() => setReport(value)} role="tab" aria-selected={report === value}>{label}</Button>)}</div>{error && <Notice tone="info">{error}</Notice>}{loading ? <Card><div className="skeleton h-48 w-full" /></Card> : body}</>
+  return <><PageHeader eyebrow="Analysis" title="Reports" description="Deterministic JSON-first operational aggregates." /><div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Reports">{[['inventory', 'Inventory risk'], ['supplier', 'Supplier SLA'], ['order', 'Order delay'], ['margin', 'Product margin'], ['daily', 'Daily brief']].map(([value, label]) => <Button key={value} variant={report === value ? 'primary' : 'secondary'} onClick={() => setReport(value)} role="tab" aria-selected={report === value}>{label}</Button>)}</div>{error && <Notice tone="info"><span>Reports are temporarily unavailable. {error}</span><Button type="button" className="ml-3" variant="secondary" onClick={() => setRetryVersion(version => version + 1)}>Retry</Button></Notice>}{loading ? <><ColdStartNotice /><Card><div className="skeleton h-48 w-full" /></Card></> : !error ? body : null}</>
 }
 
 export function ImportsPage() {
