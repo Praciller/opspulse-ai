@@ -22,7 +22,7 @@ test('HR can explore the guest demo immediately without a login or backend traff
   await expect(page.getByText('Widget stock below threshold')).toBeVisible()
   await expect(page.getByText('Supplier SLA below target')).toHaveCount(0)
 
-  await page.getByRole('link', { name: 'Reports' }).click()
+  await page.getByRole('navigation', { name: 'Guest demo navigation' }).getByRole('link', { name: 'Reports', exact: true }).click()
   await page.getByRole('tab', { name: 'Supplier SLA' }).click()
   await expect(page.getByRole('region', { name: 'Sample supplier SLA' })).toBeVisible()
 
