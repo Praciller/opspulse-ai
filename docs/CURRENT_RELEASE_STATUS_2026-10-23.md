@@ -17,7 +17,17 @@ Build-time configuration for both preview and production:
 - `VITE_API_BASE_URL=https://opspulse-ai-7gle.onrender.com`
 - `VITE_USE_MOCKS=false` (the hosted demo must use real API requests)
 
-`frontend/vercel.json` rewrites deep links to `/index.html` for React Router. Preview deployments retain Vercel Authentication; production is public and application users authenticate through OpsPulse itself.
+`frontend/vercel.json` rewrites deep links to `/index.html` for React Router. Preview deployments retain Vercel Authentication; the public guest-demo pages require no login, while authenticated console routes and real backend APIs still require OpsPulse credentials and role checks.
+
+## Public portfolio guest experience
+
+The public front-end provides a **browser-only `/demo` guest route** for HR, recruiters and interviewers. Anonymous visitors to the root `/` are directed to `/demo` rather than being prompted for a password; the sign-in page also links back to the demo.
+
+- [Guest demo](https://opspulse-ai-gamma.vercel.app/demo) — overview, sample products, risk filtering, reports and a static example of an evidence-linked AI brief.
+- [Thai-first portfolio walkthrough](PORTFOLIO_DEMO.md) — what to try in 60 seconds and what engineering capabilities are demonstrated.
+- All guest content is **bundled synthetic fixture data**, independent of the Render API, JWT login, Neon database and AI provider. No mutations or backend requests are implemented on guest pages.
+- The authenticated console remains unchanged and retains existing JWT/RBAC protection. `VITE_USE_MOCKS=false` must remain the hosted production setting; guest pages do not depend on that switch.
+- Verify anonymous root redirection, guest deep links, no API calls, accessibility, and the unchanged protected-console behavior before accepting a guest-demo release.
 
 ## Release verification
 
