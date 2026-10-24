@@ -8,11 +8,27 @@
 
 ---
 
+## Try the interactive demo — no login required
+
+**[Open OpsPulse-AI Guest Demo](https://opspulse-ai-gamma.vercel.app/demo)** · [Source code](https://github.com/Praciller/opspulse-ai) · [Quick guide for interviewers](docs/PORTFOLIO_DEMO.md)
+
+If you are a recruiter, hiring manager, or interviewer, **no account or password is needed**. Opening the [website](https://opspulse-ai-gamma.vercel.app) while signed out takes you directly to the public guest experience. It contains five explorable areas:
+
+- **Overview:** sample operational KPIs and the highest-priority risks.
+- **Products:** searchable, fictional inventory with reorder-point signals.
+- **Risk events:** severity filters, the rule evidence, and recommended actions.
+- **Reports:** interactive inventory risk, supplier SLA, order delay, and margin reports.
+- **AI brief:** an illustrative, evidence-linked rule-based operations summary.
+
+**Guest Mode is intentionally read-only and uses bundled synthetic data entirely in the browser.** It never requires authentication, credentials, Render API access, Neon access, an AI API key, or any data mutations. The authenticated console remains separately available via **Sign in to live console** and retains JWT/RBAC. The guest sample is *not* live analytics or proof that an LLM was called. This separation makes the portfolio quick to explore even while the free backend is waking.
+
 ## Phase 5/6 operations console
 
 The local `frontend/` application is implemented with React, TypeScript,
-Vite, and Tailwind. Real backend APIs are the default; deterministic fixtures
-are opt-in with `VITE_USE_MOCKS=true`. It includes protected role-aware routes,
+Vite, and Tailwind. **The authenticated console** uses real backend APIs by
+default; developer-only deterministic fixture mode is opt-in with `VITE_USE_MOCKS=true`.
+The public `/demo` route is a **separate, intentionally static guest experience**
+that always uses example data, regardless of `VITE_USE_MOCKS`, and cannot call backend APIs. It includes protected role-aware routes,
 inventory and purchasing views, risk lifecycle actions, AI brief generation and
 feedback, import upload/status/error workflows, five JSON reports, Vercel
 SPA routing, unit/component tests, Playwright mock flow, and axe
