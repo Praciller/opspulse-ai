@@ -41,3 +41,12 @@ test('guest demo deep links are public and keyboard-accessible', async ({ page }
   const results = await new AxeBuilder({ page }).analyze()
   expect(results.violations).toEqual([])
 })
+
+test('sign-in page offers a visible path back to passwordless guest demo', async ({ page }) => {
+  await page.goto('/login')
+  await expect(page.getByRole('heading', { name: 'Make the next move obvious.' })).toBeVisible()
+  await page.getByRole('link', { name: 'Explore Guest Demo — no login needed' }).click()
+  await expect(page).toHaveURL(/\/demo$/)
+  await expect(page.getByRole('heading', { name: 'Operations at a glance' })).toBeVisible()
+  await expect(page.getByText(/synthetic data · public guest demo/i)).toBeVisible()
+})
