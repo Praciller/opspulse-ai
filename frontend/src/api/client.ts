@@ -66,7 +66,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, retry = 
     sessionStorage.removeItem('opspulse.user')
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
   }
-  if ([503, 504].includes(response.status) && transientRetries > 0) {
+  // Replay only safe read methods: mutations may have committed before a 503/504.
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (['GET', 'HEAD', 'OPTIONS'].includes(method) && [503, 504].includes(response.status) && transientRetries > 0) {
     await new Promise(resolve => window.setTimeout(resolve, transientRetries === 2 ? 300 : 900))
     return apiFetch<T>(path, init, retry, transientRetries - 1)
   }
