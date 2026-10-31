@@ -1,19 +1,37 @@
 # OpsPulse-AI
 
+> **Current hosting (2026-10-23):** Frontend [Vercel](https://opspulse-ai-gamma.vercel.app) + backend [Render](https://opspulse-ai-7gle.onrender.com) + Neon PostgreSQL. Cloudflare Pages references describing September 2026 are archival, not active hosting guidance. See [current deployment status](docs/CURRENT_RELEASE_STATUS_2026-10-23.md).
+
 > **Java/Spring Boot operations intelligence platform for SMEs** — detect stockout, overstock, order delay, and supplier reliability risks, then generate an AI-assisted daily action plan that reduces manual Excel triage.
 
-[![Phase](https://img.shields.io/badge/phase-6%20import%20%2B%20reports-brightgreen)](docs/ROADMAP.md) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
+[![CI](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/Praciller/opspulse-ai/actions/workflows/ci.yml) [![Java](https://img.shields.io/badge/Java-21-orange)](#) [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](#) [![License](https://img.shields.io/badge/license-MIT-blue)](#)
 
 ---
+
+## Try the interactive demo — no login required
+
+**[Open OpsPulse-AI Guest Demo](https://opspulse-ai-gamma.vercel.app/demo)** · [Source code](https://github.com/Praciller/opspulse-ai) · [Quick guide for interviewers](docs/PORTFOLIO_DEMO.md)
+
+If you are a recruiter, hiring manager, or interviewer, **no account or password is needed**. Opening the [website](https://opspulse-ai-gamma.vercel.app) while signed out takes you directly to the public guest experience. It contains five explorable areas:
+
+- **Overview:** sample operational KPIs and the highest-priority risks.
+- **Products:** searchable, fictional inventory with reorder-point signals.
+- **Risk events:** severity filters, the rule evidence, and recommended actions.
+- **Reports:** interactive inventory risk, supplier SLA, order delay, and margin reports.
+- **AI brief:** an illustrative, evidence-linked rule-based operations summary.
+
+**Guest Mode is intentionally read-only and uses bundled synthetic data entirely in the browser.** It never requires authentication, credentials, Render API access, Neon access, an AI API key, or any data mutations. The authenticated console remains separately available via **Sign in to live console** and retains JWT/RBAC. The guest sample is *not* live analytics or proof that an LLM was called. This separation makes the portfolio quick to explore even while the free backend is waking.
 
 ## Phase 5/6 operations console
 
 The local `frontend/` application is implemented with React, TypeScript,
-Vite, and Tailwind. Real backend APIs are the default; deterministic fixtures
-are opt-in with `VITE_USE_MOCKS=true`. It includes protected role-aware routes,
+Vite, and Tailwind. **The authenticated console** uses real backend APIs by
+default; developer-only deterministic fixture mode is opt-in with `VITE_USE_MOCKS=true`.
+The public `/demo` route is a **separate, intentionally static guest experience**
+that always uses example data, regardless of `VITE_USE_MOCKS`, and cannot call backend APIs. It includes protected role-aware routes,
 inventory and purchasing views, risk lifecycle actions, AI brief generation and
-feedback, import upload/status/error workflows, five JSON reports, Cloudflare
-Pages SPA routing, unit/component tests, Playwright mock flow, and axe
+feedback, import upload/status/error workflows, five JSON reports, Vercel
+SPA routing, unit/component tests, Playwright mock flow, and axe
 accessibility coverage.
 See [`frontend/README.md`](frontend/README.md) for setup and the optional
 real-API smoke variables.
@@ -44,15 +62,9 @@ This project is also a **portfolio artifact** demonstrating end-to-end engineeri
 
 ## Implementation status
 
-- **Phase 0 — repository scaffolding:** implemented locally.
-- **Phase 1 — backend foundation:** implemented and verified locally.
-- **Phase 2 — core CRUD and transactional inventory:** implemented and verified locally.
-- **Phase 3 — deterministic risk engine and outbox processing:** implemented locally; verification is listed below.
-- **Phase 4 — AI recommendations:** implemented locally; BYOK Spring AI generation, deterministic fallback, prompt/version audit, lifecycle API, and outbox publication are verified below.
-- **Phase 5 — frontend operations console:** implemented locally in [`frontend/`](frontend/); mock, real-API-gated, and accessibility smoke coverage are included.
-- **Phase 6 — imports and reports:** implemented locally; V11 persistence, bounded asynchronous CSV jobs, idempotency/file-hash deduplication, row errors, five report endpoints, frontend wiring, and Testcontainers/API coverage are included.
-- **Phase 7 — hosted hardening:** local CI, coverage, security checks, optional observability stack, slim-image verification, and gated smoke tooling are implemented; hosted provisioning remains external.
-- **Phase 8 — portfolio completion:** documentation and handoff guidance are prepared; hosted URLs, screenshots, publication, commit, and push remain external.
+- **Phases 0–6 — foundation through imports/reports:** implemented and verified (145 backend tests with Testcontainers, architecture tests, frontend lint/unit/build, Playwright + axe coverage). Source is public on GitHub with CI enforcing build, tests, Docker image size, npm audit, and dependency review.
+- **Phase 7 — hosted hardening:** CI, JaCoCo coverage, security checks, optional full-stack observability profile, jlink slim image (108 MB, gated at 250 MB in CI), and smoke tooling are implemented and verified.
+- **Phase 8 — portfolio completion:** the hosted slim demo and portfolio handoff were verified on 2026-09-06. See [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md) for historical evidence; current service availability must be checked separately.
 
 Phase 2 adds bounded product, supplier, customer-order, purchase-order, and
 inventory-movement APIs. Stock is changed only through immutable movement rows.
@@ -69,18 +81,24 @@ later administration UI exists.
 - **Products, Suppliers, Orders, Purchase Orders, Inventory Movements** — full CRUD with audit log.
 - **Transactional inventory** — stock updates, immutable movements, audit, and outbox event in one transaction.
 - **Deterministic risk engine** — 6 risk types (`STOCKOUT_RISK`, `OVERSTOCK_RISK`, `SLOW_MOVING_INVENTORY`, `ORDER_DELAY_RISK`, `SUPPLIER_DELAY_RISK`, `LOW_MARGIN_RISK`), pluggable rules, scheduled scan, active-event deduplication, and system resolution.
-- **AI daily operations brief** — provider-agnostic BYOK (OpenAI, Anthropic, Ollama), prompt versioning, audit trail, **rule-based fallback** when AI is unavailable or hallucinates.
+- **AI daily operations brief** — OpenAI-compatible BYOK chat adapter, prompt versioning, audit trail, **rule-based fallback** when AI is unavailable or returns invalid risk references. Native Anthropic/Ollama integrations are not implemented.
 - **Dashboard** — total products, open orders, delayed orders, high-risk products, open risks, supplier reliability ranking, top stockout risks, slow-moving list, recent movements, recent risks, latest brief.
 - **Reports** — Daily Ops Brief, Inventory Risk, Supplier SLA, Order Delay, Product Margin (JSON-first).
 - **CSV import** — idempotent, row-level errors, file-hash dedup, job status tracking.
 - **Audit log** — every sensitive action logged with actor, before/after snapshot, request ID.
 - **PostgreSQL outbox** — CloudEvents 1.0 envelope, scheduler poller, idempotent processed-event tracking, retry/dead-letter handling, and future Kafka migration without contract change.
 
+## Reliability and security follow-up
+
+The current hosted demo is a **single-instance portfolio environment** using synthetic data. CSV uploads are queued with in-process bytes; after a restart, interrupted `PENDING`/`PROCESSING` jobs are marked `FAILED`, **not automatically resumed**. Some rows may already have been written. Do not use this import workflow for critical production data without durable payload storage, reliable recovery, and explicit partial-import handling.
+
+See [the 2026-10-22 hardening review](docs/HARDENING_REVIEW_2026-10-22.md) for remaining security and GitHub administration actions.
+
 ## Architecture at a glance
 
 ```mermaid
 flowchart TB
-    subgraph Frontend[Frontend - Cloudflare Pages]
+    subgraph Frontend[Frontend - Vercel]
         React[React + Vite + TS]
     end
     subgraph Backend[Backend - Render Free - Spring Boot 3 / Java 21]
@@ -99,7 +117,7 @@ flowchart TB
         Upstash[(Upstash Redis - optional)]
     end
     subgraph ExtAI[External AI - BYOK]
-        Provider[OpenAI / Anthropic / Ollama]
+        Provider[OpenAI-compatible chat API]
     end
     React -->|HTTPS + JWT| API
     API --> Sec --> UC --> Dom
@@ -117,7 +135,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     User[Operations Manager]
-    Web[OpsPulse Web UI - React on Cloudflare Pages]
+    Web[OpsPulse Web UI - React on Vercel]
     API[OpsPulse API - Spring Boot on Render]
     DB[(Neon Postgres)]
     Cache[(Upstash Redis - optional)]
@@ -134,20 +152,20 @@ flowchart LR
 | Layer | Technology |
 |---|---|
 | Backend | Java 21, Spring Boot 3.x, Spring Web MVC, Spring Security + JWT, Spring Data JPA, Flyway, Spring Scheduler, Spring Boot Actuator, springdoc-openapi |
-| AI | Spring AI 1.0 (provider-agnostic), BYOK env-var key, rule-based fallback |
+| AI | Spring AI OpenAI-compatible chat adapter, BYOK env-var key, rule-based fallback |
 | Database | PostgreSQL (Neon Free), Flyway migrations, JSONB for `source_metrics` and outbox `payload` |
-| Cache | Caffeine (default) or Upstash Redis (optional) |
+| Cache | No cache integration currently; PostgreSQL is the source of truth |
 | Tests | JUnit 5, Mockito, Testcontainers, JaCoCo |
 | Observability | Actuator + Micrometer + Prometheus + Grafana (local full stack) |
 | Frontend | React + Vite + TypeScript + Tailwind (or clean CSS) |
-| Deployment | Docker (multi-stage JRE 21 slim), Cloudflare Pages, Render Free, Neon Free |
+| Deployment | Docker (multi-stage JRE 21 slim), Vercel, Render Free, Neon Free |
 | Events | PostgreSQL outbox + CloudEvents 1.0 envelope; optional Kafka/Redpanda in local full stack |
 
 ## Target Hosted Slim vs Local Full Stack
 
 | Aspect | Hosted Slim (free demo) | Local Full Stack (dev/observability) |
 |---|---|---|
-| Frontend | Cloudflare Pages | Vite dev server |
+| Frontend | Vercel | Vite dev server |
 | Backend | Render Free Web Service (Docker) | Spring Boot in Docker Compose |
 | Database | Neon Free Postgres | PostgreSQL in Docker Compose |
 | Cache | Caffeine (or optional Upstash Redis) | Redis in Docker Compose |
@@ -156,23 +174,22 @@ flowchart LR
 | Cost | $0/month (verified 2026-07-13) | Local machine only |
 | Compose file | `docker-compose.yml` (profile `local`) | `docker-compose.full.yml` (profile `fullstack`) |
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full topology, env vars, and platform validation.
+For the **current Vercel + Render hosting topology and release checks**, read [docs/CURRENT_RELEASE_STATUS_2026-10-23.md](docs/CURRENT_RELEASE_STATUS_2026-10-23.md). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) is preserved as the **historical September 2026** runbook, not the current deployment procedure.
 
 ## Demo links
 
-> Placeholder — populated after Phase 7 deploy.
-
-- **Frontend (Cloudflare Pages):** `https://opspulse-ai.pages.dev` _(TBD)_
-- **Backend API (Render):** `https://opspulse-ai.onrender.com` _(TBD)_
-- **Swagger UI:** `https://opspulse-ai.onrender.com/swagger-ui.html` _(TBD)_
-- **Demo credentials:** _(TBD — documented after deploy; demo-only, no real data)_
+- **Live frontend:** https://opspulse-ai-gamma.vercel.app
+- **Backend API:** https://opspulse-ai-7gle.onrender.com
+- **Swagger UI:** https://opspulse-ai-7gle.onrender.com/swagger-ui.html
+- **Public demo login:** `viewer@demo.opspulse.local` / `DemoV1-HZCjDhe8i0-S5GVyEWVkix4E`
+- **Access model:** hosted demo credentials are intentionally public and map to a synthetic-data **VIEWER-only** account. Write/admin actions remain forbidden.
 
 ## Quick start (local minimal)
 
 Prerequisites: Docker Desktop and Git. Java 21 is required only when running Gradle directly on the host.
 
 ```bash
-git clone https://github.com/<you>/opspulse-ai.git
+git clone https://github.com/Praciller/opspulse-ai.git
 cd opspulse-ai
 # Copy .env.example to .env and set JWT_SECRET to a random 32+ character value.
 docker compose up --build -d
@@ -236,28 +253,29 @@ actuator contract.
 
 ## Deployment overview
 
-OpsPulse-AI targets **free-tier-only** services. Availability and limits were verified on 2026-07-13 but require periodic manual verification before deployment because provider pricing can change:
+OpsPulse-AI was first verified as a hosted demo on 2026-09-06. As of 2026-10-23 the active frontend is on Vercel, with Render and Neon retained. The historical [deployment guide](docs/DEPLOYMENT.md) preserves the September evidence; use the [current deployment status](docs/CURRENT_RELEASE_STATUS_2026-10-23.md) for the live topology and re-validate provider pricing independently:
 
 | Layer | Service | Verified limits |
 |---|---|---|
-| Frontend | Cloudflare Pages | Unlimited bandwidth/sites; 500 builds/month |
-| Backend | Render Free Web Service | 750h/workspace/month; sleeps after 15 min idle |
-| Database | Neon Free Postgres | 100 CU-hours/project/month; 0.5 GB storage; scales to zero |
-| Cache (optional) | Upstash Redis Free | 500K commands/month; 256 MB data |
+| Frontend | Vercel Hobby | Live at `opspulse-ai-gamma.vercel.app`; static Vite build |
+| Backend | Render Free Web Service | Live in Oregon; free service sleeps after idle |
+| Database | Vercel-managed Neon Free (`free_v3`) | Dedicated `opspulse-ai-demo`; PostgreSQL 18.6 observed |
+| Cache | No dedicated cache adapter | Upstash/Redis caching is not implemented in the current backend |
 
-Full deploy steps, env vars, and the **platform validation checklist** (must pass before each deploy) live in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Review the [current release checklist](docs/CURRENT_RELEASE_STATUS_2026-10-23.md#release-checklist) for Vercel + Render. The [September deployment instructions](docs/DEPLOYMENT.md) remain available only for historical context.
 
-## Screenshots
+## Hosted screenshots
 
-> Placeholder — populated in Phase 8.
+All screenshots below were captured from the real Cloudflare Pages → Render → Neon hosted stack on 2026-09-06 using the least-privilege VIEWER demo account.
 
-| Page | Screenshot |
-|---|---|
-| Login | _(TBD)_ |
-| Dashboard | _(TBD)_ |
-| Risk events | _(TBD)_ |
-| AI daily brief | _(TBD)_ |
-| CSV import | _(TBD)_ |
+### Operations dashboard
+![OpsPulse hosted dashboard](docs/assets/hosted-demo/dashboard.png)
+
+### Deterministic risk events
+![OpsPulse hosted deterministic risk events](docs/assets/hosted-demo/risk-events.png)
+
+### Rule-based operations brief
+![OpsPulse hosted rule-based AI fallback brief](docs/assets/hosted-demo/ai-brief.png)
 
 ## Sample data
 
@@ -270,13 +288,13 @@ transaction-scoped business fixtures; the local seed remains user-only.
 
 ## API docs
 
-- **Swagger UI (hosted):** `https://opspulse-ai.onrender.com/swagger-ui.html` _(TBD)_
-- **OpenAPI spec (hosted):** `https://opspulse-ai.onrender.com/v3/api-docs` _(TBD)_
+- **Swagger UI (hosted):** `https://opspulse-ai-7gle.onrender.com/swagger-ui.html`
+- **OpenAPI spec (hosted):** `https://opspulse-ai-7gle.onrender.com/v3/api-docs`
 - **API contract plan:** [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
 - **Phase 7 local UAT:** [docs/PHASE7_UAT.md](docs/PHASE7_UAT.md)
 - **Phase 8 hosted handoff:** [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md)
 
-Implemented through Phase 6 on the backend, with the Phase 5/6 console in
+Implemented through the Phase 8 hosted portfolio milestone, with the console in
 `frontend/`: `/api/auth`, `/api/audit-logs`, `/api/products`,
 `/api/suppliers`, `/api/orders`, `/api/purchase-orders`,
 `/api/inventory-movements`, `/api/risks`, `/api/admin/outbox-events`,
@@ -325,8 +343,8 @@ Prometheus locally only; hosted metrics remain protected.
 
 ## Known limitations
 
-- **Render cold starts (about 60s)** after 15 min idle — accepted for the free demo and explained in the loading state.
-- **Neon 0.5 GB storage** — demo dataset ~100 MB; cleanup jobs prune `outbox_events`, `processed_events`, `import_row_errors`.
+- **Render cold starts are slow for this Java workload** — the hosted demo has shown starts around 165–267 seconds after deploy/idle, including a measured 165-second health request on 2026-10-23 (then 0.48 seconds when warm). The frontend keeps an explicit loading/retry state; this limitation is accepted for the free-tier demo.
+- **Neon free-tier quotas are provider-managed** — this deployment uses Vercel-managed Neon `free_v3`; the provider dashboard is the quota source of truth. The hosted dataset is synthetic and intentionally small.
 - **AI brief requires BYOK** — the public hosted demo shows the **rule-based fallback brief** unless the viewer sets `AI_API_KEY` in their own instance.
 - **No PDF export** — reports are JSON-first (out of scope per PRD §6).
 - **Single-tenant for MVP** — schema has `organization_id` placeholder for future multi-tenant.
@@ -378,14 +396,14 @@ gantt
 | [docs/API_CONTRACT.md](docs/API_CONTRACT.md) | Endpoint inventory, RBAC matrix, examples, error envelope, OpenAPI |
 | [docs/ADR/](docs/ADR/) | 7 Architecture Decision Records (Spring Boot, Outbox, BYOK, Free-tier, Risk-first, CloudEvents, Spring AI) |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | 8-phase implementation plan with exit criteria |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Cloudflare + Render + Neon + Upstash; env vars; platform validation checklist |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Historical September deployment evidence and verification checklist; see current release status for Vercel |
 | [docs/RISK_REGISTER.md](docs/RISK_REGISTER.md) | 15 technical & product risks with mitigations and review cadence |
 | [docs/GITHUB_ISSUES.md](docs/GITHUB_ISSUES.md) | ~55 suggested issues with labels, milestones, acceptance criteria |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Local prerequisites, verification commands, and project contribution rules |
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT.
 
 ## Author
 
