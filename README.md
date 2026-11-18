@@ -180,7 +180,8 @@ For the **current Vercel + Render hosting topology and release checks**, read [d
 
 - **Live frontend:** https://opspulse-ai-gamma.vercel.app
 - **Backend API:** https://opspulse-ai-7gle.onrender.com
-- **Swagger UI:** https://opspulse-ai-7gle.onrender.com/swagger-ui.html
+- **API reference (static):** [OpenAPI snapshot](frontend/public/openapi.json)
+- **Swagger UI (live):** https://opspulse-ai-7gle.onrender.com/swagger-ui.html — may take several minutes after Render has idled.
 - **Public demo login:** `viewer@demo.opspulse.local` / `DemoV1-HZCjDhe8i0-S5GVyEWVkix4E`
 - **Access model:** hosted demo credentials are intentionally public and map to a synthetic-data **VIEWER-only** account. Write/admin actions remain forbidden.
 
@@ -288,11 +289,24 @@ transaction-scoped business fixtures; the local seed remains user-only.
 
 ## API docs
 
+- **OpenAPI snapshot (static):** [openapi.json](frontend/public/openapi.json) — generated from Spring Boot with a local test database. Reading the file requires no backend, account, or API calls.
 - **Swagger UI (hosted):** `https://opspulse-ai-7gle.onrender.com/swagger-ui.html`
 - **OpenAPI spec (hosted):** `https://opspulse-ai-7gle.onrender.com/v3/api-docs`
 - **API contract plan:** [docs/API_CONTRACT.md](docs/API_CONTRACT.md)
 - **Phase 7 local UAT:** [docs/PHASE7_UAT.md](docs/PHASE7_UAT.md)
 - **Phase 8 hosted handoff:** [docs/PHASE8_HANDOFF.md](docs/PHASE8_HANDOFF.md)
+
+With Java 21 and Docker running, regenerate the snapshot after API contract changes:
+
+```bash
+UPDATE_OPENAPI_SNAPSHOT=true ./gradlew test --tests '*AuthOpenApiIntegrationTest' --rerun-tasks
+```
+
+In PowerShell, set `$env:UPDATE_OPENAPI_SNAPSHOT = "true"` before running
+`./gradlew.bat` with the same arguments, then clear it with
+`Remove-Item Env:UPDATE_OPENAPI_SNAPSHOT`. Review and commit the generated JSON.
+CI compares the snapshot to the test application's OpenAPI response, excluding
+the request-dependent server URL.
 
 Implemented through the Phase 8 hosted portfolio milestone, with the console in
 `frontend/`: `/api/auth`, `/api/audit-logs`, `/api/products`,
