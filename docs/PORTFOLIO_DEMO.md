@@ -13,7 +13,7 @@
 2. เข้า **Risk events** ลองเลือกตัวกรอง `High` เพื่อดูหลักฐานที่ทำให้ระบบจัดลำดับความสำคัญของความเสี่ยง
 3. เข้า **Reports** แล้วสลับ Inventory Risk, Supplier SLA, Order Delay และ Product Margin
 4. เข้า **AI brief** เพื่อดูตัวอย่างแผนปฏิบัติการที่มีการอ้างอิง Risk ID และตัวเลขต้นทาง
-5. หากสนใจด้านโค้ดและสถาปัตยกรรม ให้เปิด [Repository](https://github.com/Praciller/opspulse-ai) ต่อได้ทันที
+5. หากสนใจฝั่ง backend ให้เปิด [OpenAPI snapshot](../frontend/public/openapi.json) เพื่อดู endpoints, schemas และการยืนยันตัวตนได้ทันที ส่วน [Swagger แบบ live](https://opspulse-ai-7gle.onrender.com/swagger-ui.html) อาจใช้เวลาหลายนาทีถ้า Render เพิ่งเริ่มทำงานหลังพัก
 
 ## สิ่งที่โปรเจกต์แสดงให้เห็น
 
