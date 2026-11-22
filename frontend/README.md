@@ -2,6 +2,20 @@
 
 This Vite/React application is the Phase 5/6 operations console for OpsPulse AI.
 
+## Node.js requirement
+
+Use Node.js 24 for local development and CI builds (see `.node-version`). Vite 8 requires Node 20.19+ or 22.12+; this project standardizes on Node 24 to match GitHub Actions.
+
+## Guest demo for recruiters and interviewers
+
+The public route **[https://opspulse-ai-gamma.vercel.app/demo](https://opspulse-ai-gamma.vercel.app/demo)** is an independent, browser-only portfolio showcase. Anonymous visitors to `/` are redirected to `/demo`; actual authenticated users still reach the live dashboard at `/`. The Login screen also offers an **Explore Guest Demo — no login needed** link.
+
+The Guest Demo showcases Overview, searchable Products, filterable Risk Events, four Reports, and an example evidence-linked rule-based AI Brief. It uses **fixed synthetic fixtures** in `src/demo/data.ts` and is intentionally independent of the app API client and Auth context: no live API calls, session tokens, login requests, backend warm-up, write actions, or database access. Its metrics must **not** be described as production results.
+
+**Security boundary:** `/demo/*` is a public static experience, not a `VIEWER` role or an authenticated backend API identity. All real backend endpoints and authenticated console screens retain their existing JWT and RBAC protections. Do not put secrets or real customer data in guest fixtures. The developer-level `VITE_USE_MOCKS` setting is unrelated to this public route and must remain `false` for Vercel production.
+
+Run `npm run test`, `npm run build` and `npm run test:e2e` before publication; the guest E2E test also verifies that no Render API calls occur. See [Portfolio demo / HR walkthrough](../docs/PORTFOLIO_DEMO.md).
+
 ## Local development
 
 ```powershell
@@ -30,16 +44,13 @@ variables are supplied: `E2E_API_BASE_URL`, `E2E_EMAIL`, and `E2E_PASSWORD`.
 It exercises login, products, risks, and brief generation against a running
 backend without storing credentials in the repository.
 
-## Cloudflare Pages
+## Build output and deployment status
 
-Use the following Pages settings (no deployment is performed by this project):
+Run `npm ci && npm run build` to generate the Vite `dist/` bundle.
+Set `VITE_API_BASE_URL` to the intended backend origin and do not enable
+`VITE_USE_MOCKS` in a deployed environment.
 
-- Build command: `npm ci && npm run build`
-- Build output directory: `frontend/dist` when the repository root is used, or
-  `dist` when `frontend/` is configured as the Pages root
-- Environment variables: `VITE_API_BASE_URL`, and optionally `VITE_USE_MOCKS`
-- The committed `frontend/_redirects` file keeps client-side routes working on
-  direct navigation.
+The current production frontend runs on [Vercel](https://opspulse-ai-gamma.vercel.app), linked to GitHub `Praciller/opspulse-ai` and automatically built from `main`. Vercel project root is `frontend/`, framework Vite, Node.js 24, build command `npm run build` and output `dist`. The committed `vercel.json` provides SPA deep-link rewrites. Preview deployments remain protected by Vercel Authentication; production uses OpsPulse authentication for live console routes, while public `/demo` is explicitly unauthenticated and browser-only. The older `_redirects` file is kept only for historical static-host compatibility. See [the current deployment status](../docs/CURRENT_RELEASE_STATUS_2026-10-23.md).
 
 Reports and imports now use the Phase 6 backend contracts. In mock mode they use
 stateful deterministic fixtures; real APIs remain the default. Do not enable

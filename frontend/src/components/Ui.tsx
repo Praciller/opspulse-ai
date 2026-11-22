@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: React.ReactNode }) {
   return <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs uppercase tracking-[0.22em] text-accent">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{description}</p>}</div>{action}</div>
 }
@@ -18,6 +20,17 @@ export function StatusPill({ value }: { value: string }) {
 
 export function Notice({ children, tone = 'error' }: { children: React.ReactNode; tone?: 'error' | 'info' }) {
   return <div role="alert" className={`rounded-lg border px-4 py-3 text-sm ${tone === 'error' ? 'border-rose-400/30 bg-rose-400/10 text-rose-100' : 'border-sky-400/30 bg-sky-400/10 text-sky-100'}`}>{children}</div>
+}
+
+/** Keep initial UI responsive while a sleeping free-tier API wakes up. */
+export function ColdStartNotice() {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), 10_000)
+    return () => window.clearTimeout(timer)
+  }, [])
+  if (!slow) return null
+  return <div className="mb-4"><Notice tone="info">The free demo backend may be waking up after inactivity. This can take several minutes. Keep this tab open; if the request fails, try again.</Notice></div>
 }
 
 export function Deferred({ title, description }: { title: string; description: string }) {
