@@ -222,6 +222,7 @@ public class BriefService implements BriefUseCase {
 
     private static String sanitizeErrorClass(String value) {
         if (value == null || value.isBlank()) return "AI_PROVIDER_FAILURE";
-        return value.replaceAll("[^A-Za-z0-9_.-]", "_").substring(0, Math.min(120, value.length()));
+        String sanitized = value.replaceAll("[^A-Za-z0-9_.-]", "_");
+        return sanitized.substring(0, Math.min(120, sanitized.length()));
     }
 }
