@@ -182,8 +182,8 @@ For the **current Vercel + Render hosting topology and release checks**, read [d
 - **Backend API:** https://opspulse-ai-7gle.onrender.com
 - **API reference (static):** [OpenAPI snapshot](frontend/public/openapi.json)
 - **Swagger UI (live):** https://opspulse-ai-7gle.onrender.com/swagger-ui.html — may take several minutes after Render has idled.
-- **Public demo login:** `viewer@demo.opspulse.local` / `DemoV1-HZCjDhe8i0-S5GVyEWVkix4E`
-- **Access model:** hosted demo credentials are intentionally public and map to a synthetic-data **VIEWER-only** account. Write/admin actions remain forbidden.
+- **Guest demo:** no account or credentials are needed; it uses fictional data in the browser and is read-only.
+- **Authenticated console:** sign-in is a separate experience and is not needed to explore the public portfolio demo.
 
 ## Quick start (local minimal)
 
@@ -211,13 +211,11 @@ curl -H "X-Request-Id: local-check-1" http://localhost:8080/actuator/health
 docker compose down
 ```
 
-The local profile applies the identity migrations and seeds five demo-only users.
-All use password `OpsPulseDemo!2026`: `admin@opspulse.demo`,
-`manager@opspulse.demo`, `operator1@opspulse.demo`,
-`operator2@opspulse.demo`, and `viewer@opspulse.demo`. Production never loads
-this seed location. Registration defaults to `ADMIN_ONLY`; a self-hosted
-environment may explicitly set `REGISTRATION_MODE=PUBLIC_VIEWER`, which can
-create only `VIEWER` users.
+The local profile applies the identity migrations and seeds users for
+local-only authentication testing. Do not use these seeded users in hosted
+environments; production never loads this seed location. Registration defaults
+to `ADMIN_ONLY`; a self-hosted environment may explicitly set
+`REGISTRATION_MODE=PUBLIC_VIEWER`, which can create only `VIEWER` users.
 
 Runtime configuration:
 
