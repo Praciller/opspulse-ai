@@ -39,6 +39,19 @@ describe('API client', () => {
     await expect(promise).rejects.toThrow('api_key=[redacted]')
     await promise.catch(error => expect((error as Error).message).not.toContain('sk-live-secret'))
   })
+  it('does not replay a failed POST mutation on 503', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('{"message":"Unavailable"}', { status: 503 }))
+    await expect(apiFetch('/api/orders', { method: 'POST', body: '{}' })).rejects.toMatchObject({ status: 503 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('retries a safe GET after a transient 503', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('{"message":"Unavailable"}', { status: 503 }))
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }))
+    await expect(apiFetch<{ ok: boolean }>('/api/dashboard')).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
   it('serializes paginated risk filters and whitelisted sort values', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{"items":[],"page":2,"size":10,"total":0,"totalPages":0}', { status: 200 }))
     await api.risks({ page: 2, size: 10, sort: 'severity,desc', riskType: 'STOCKOUT_RISK', entityType: 'PRODUCT', entityId: 'product-1', from: '2026-07-01T00:00:00Z', to: '2026-07-31T23:59:59Z' })

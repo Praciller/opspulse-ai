@@ -3,6 +3,7 @@ FROM gradle:8.14.3-jdk21-alpine AS build
 WORKDIR /workspace
 COPY --chown=gradle:gradle gradle/ gradle/
 COPY --chown=gradle:gradle gradlew settings.gradle.kts build.gradle.kts ./
+RUN chmod +x gradlew
 COPY --chown=gradle:gradle src/ src/
 RUN chown gradle:gradle /workspace
 USER gradle
